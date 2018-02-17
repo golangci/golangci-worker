@@ -1,0 +1,6 @@
+/.env
+/.env.*
+/vendor
+/golangci-worker
+/gometalinter_bin
+/bin
