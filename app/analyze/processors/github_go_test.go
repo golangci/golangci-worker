@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -12,7 +14,9 @@ import (
 	"github.com/golangci/golangci-worker/app/analyze/fetchers"
 	"github.com/golangci/golangci-worker/app/analyze/linters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
+	lp "github.com/golangci/golangci-worker/app/analyze/linters/result/processors"
 	"github.com/golangci/golangci-worker/app/analyze/reporters"
+	"github.com/golangci/golangci-worker/app/test"
 	"github.com/golangci/golangci-worker/app/utils/fsutils"
 	"github.com/golangci/golangci-worker/app/utils/github"
 	gh "github.com/google/go-github/github"
@@ -60,7 +64,7 @@ func getFakeReporter(ctrl *gomock.Controller, expIssues ...result.Issue) reporte
 
 func getNopReporter(ctrl *gomock.Controller) reporters.Reporter {
 	r := reporters.NewMockReporter(ctrl)
-	r.EXPECT().Report(testCtx, any, any).Return(nil)
+	r.EXPECT().Report(testCtx, any, any).AnyTimes().Return(nil)
 	return r
 }
 
@@ -123,48 +127,60 @@ func getNopGithubClient(ctrl *gomock.Controller) github.Client {
 
 	gc := github.NewMockClient(ctrl)
 	gc.EXPECT().CreateReview(any, any, any).AnyTimes()
-	gc.EXPECT().GetPullRequest(testCtx, c).Return(testPR, nil).AnyTimes()
+	gc.EXPECT().GetPullRequest(testCtx, c).AnyTimes().Return(testPR, nil)
 	gc.EXPECT().GetPullRequestPatch(any, any).AnyTimes().Return(getFakePatch())
 	gc.EXPECT().SetCommitStatus(any, any, testSHA, any, any).AnyTimes()
 	return gc
 }
 
-func fillWithNops(ctrl *gomock.Controller, p *githubGo) {
-	if p.client == nil {
-		p.client = getNopGithubClient(ctrl)
+func fillWithNops(ctrl *gomock.Controller, cfg *githubGoConfig) {
+	if cfg.client == nil {
+		cfg.client = getNopGithubClient(ctrl)
 	}
-	if p.context == nil {
-		p.context = &github.FakeContext
+	if cfg.exec == nil {
+		cfg.exec = getNopExecutor(ctrl)
 	}
-	if p.exec == nil {
-		p.exec = getNopExecutor(ctrl)
+	if cfg.linters == nil {
+		cfg.linters = getFakeLinters(ctrl)
 	}
-	if p.linters == nil {
-		p.linters = getFakeLinters(ctrl)
+	if cfg.repoFetcher == nil {
+		cfg.repoFetcher = getNopFetcher(ctrl)
 	}
-	if p.repoFetcher == nil {
-		p.repoFetcher = getNopFetcher(ctrl)
-	}
-	if p.reporter == nil {
-		p.reporter = getNopReporter(ctrl)
+	if cfg.reporter == nil {
+		cfg.reporter = getNopReporter(ctrl)
 	}
 }
 
-func testProcessor(t *testing.T, ctrl *gomock.Controller, p *githubGo) {
-	fillWithNops(ctrl, p)
-	assert.NoError(t, p.Process(context.Background()))
+func getNopedProcessor(t *testing.T, ctrl *gomock.Controller, cfg githubGoConfig) *githubGo {
+	fillWithNops(ctrl, &cfg)
+
+	p, err := newGithubGo(context.Background(), &github.FakeContext, cfg)
+	assert.NoError(t, err)
+
+	return p
+}
+
+func testProcessor(t *testing.T, ctrl *gomock.Controller, cfg githubGoConfig) {
+	p := getNopedProcessor(t, ctrl, cfg)
+
+	err := p.Process(context.Background())
+	assert.NoError(t, err)
 }
 
 func getGithubProcessorWithIssues(t *testing.T, ctrl *gomock.Controller,
 	issues, expIssues []result.Issue) *githubGo {
 
-	li := getFakeLinters(ctrl, issues...)
-	f := getNopFetcher(ctrl)
-	r := getFakeReporter(ctrl, expIssues...)
-	e := getFakeExecutor(ctrl)
-	gc := getNopGithubClient(ctrl)
+	cfg := githubGoConfig{
+		linters:     getFakeLinters(ctrl, issues...),
+		repoFetcher: getNopFetcher(ctrl),
+		reporter:    getFakeReporter(ctrl, expIssues...),
+		exec:        getFakeExecutor(ctrl),
+		client:      getNopGithubClient(ctrl),
+	}
 
-	return newGithubGo(f, li, r, e, gc, &github.FakeContext)
+	p, err := newGithubGo(context.Background(), &github.FakeContext, cfg)
+	assert.NoError(t, err)
+	return p
 }
 
 func TestNewIssuesFiltering(t *testing.T) {
@@ -207,7 +223,7 @@ func TestSetCommitStatusSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	testProcessor(t, ctrl, &githubGo{
+	testProcessor(t, ctrl, githubGoConfig{
 		linters: getFakeLinters(ctrl),
 		client:  getFakeStatusGithubClient(t, ctrl, github.StatusSuccess, "No issues found!"),
 	})
@@ -217,7 +233,7 @@ func TestSetCommitStatusFailureOneIssue(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	testProcessor(t, ctrl, &githubGo{
+	testProcessor(t, ctrl, githubGoConfig{
 		linters: getFakeLinters(ctrl, fakeChangedIssue),
 		client:  getFakeStatusGithubClient(t, ctrl, github.StatusFailure, "1 issue found"),
 	})
@@ -227,7 +243,7 @@ func TestSetCommitStatusFailureTwoIssues(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	testProcessor(t, ctrl, &githubGo{
+	testProcessor(t, ctrl, githubGoConfig{
 		linters: getFakeLinters(ctrl, fakeChangedIssues...),
 		client:  getFakeStatusGithubClient(t, ctrl, github.StatusFailure, "2 issues found"),
 	})
@@ -237,11 +253,82 @@ func TestSetCommitStatusSuccessOnError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	p := githubGo{
+	p := getNopedProcessor(t, ctrl, githubGoConfig{
 		linters:  getFakeLinters(ctrl, fakeChangedIssue),
 		reporter: getErroredReporter(ctrl),
 		client:   getFakeStatusGithubClient(t, ctrl, github.StatusSuccess, "No issues found!"),
-	}
-	fillWithNops(ctrl, &p)
+	})
 	assert.Error(t, p.Process(context.Background()))
+}
+
+func getLinterProcessorsExceptDiff() []lp.Processor {
+	ret := []lp.Processor{}
+	dp := lp.NewDiffProcessor("")
+	for _, p := range getLinterProcessors("") {
+		if p.Name() != dp.Name() {
+			ret = append(ret, p)
+		}
+	}
+	return ret
+}
+
+func getTestingRepo(t *testing.T) (*github.Context, string) {
+	repo := os.Getenv("REPO")
+	if repo == "" {
+		repo = "golangci/golangci-worker"
+	}
+
+	branch := os.Getenv("BRANCH")
+	if branch == "" {
+		branch = "master"
+	}
+
+	repoParts := strings.Split(repo, "/")
+	assert.Len(t, repoParts, 2)
+
+	c := &github.Context{
+		Repo: github.Repo{
+			Owner: repoParts[0],
+			Name:  repoParts[1],
+		},
+	}
+
+	return c, branch
+}
+
+func TestRunProcessorOnRepo(t *testing.T) {
+	test.MarkAsSlow(t)
+
+	c, branch := getTestingRepo(t)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	cloneURL := fmt.Sprintf("git@github.com:%s/%s.git", c.Repo.Owner, c.Repo.Name)
+	pr := &gh.PullRequest{
+		Head: &gh.PullRequestBranch{
+			Ref: gh.String(branch),
+			Repo: &gh.Repository{
+				SSHURL: gh.String(cloneURL),
+			},
+		},
+	}
+
+	gc := github.NewMockClient(ctrl)
+	gc.EXPECT().GetPullRequest(testCtx, c).Return(pr, nil)
+	gc.EXPECT().SetCommitStatus(any, any, any, any, any).AnyTimes()
+
+	cfg := githubGoConfig{
+		runner: linters.SimpleRunner{
+			Processors: getLinterProcessorsExceptDiff(),
+		},
+		reporter: getNopReporter(ctrl),
+		client:   gc,
+	}
+
+	p, err := newGithubGo(context.Background(), c, cfg)
+	assert.NoError(t, err)
+
+	err = p.Process(context.Background())
+	assert.NoError(t, err)
 }

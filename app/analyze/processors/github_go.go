@@ -3,11 +3,14 @@ package processors
 import (
 	"context"
 	"fmt"
+	"os"
 	"path"
 
+	"github.com/golangci/golangci-worker/app/analyze/environments"
 	"github.com/golangci/golangci-worker/app/analyze/executors"
 	"github.com/golangci/golangci-worker/app/analyze/fetchers"
 	"github.com/golangci/golangci-worker/app/analyze/linters"
+	"github.com/golangci/golangci-worker/app/analyze/linters/golinters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
 	lp "github.com/golangci/golangci-worker/app/analyze/linters/result/processors"
 	"github.com/golangci/golangci-worker/app/analyze/reporters"
@@ -17,30 +20,90 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type githubGo struct {
-	pr *gh.PullRequest
-
+type githubGoConfig struct {
 	repoFetcher fetchers.Fetcher
 	linters     []linters.Linter
+	runner      linters.Runner
 	reporter    reporters.Reporter
 	exec        executors.Executor
 	client      github.Client
-	context     *github.Context
-
-	status string
 }
 
-func newGithubGo(f fetchers.Fetcher, a []linters.Linter,
-	r reporters.Reporter, exec executors.Executor, client github.Client, c *github.Context) *githubGo {
+type githubGo struct {
+	pr *gh.PullRequest
+
+	context *github.Context
+	githubGoConfig
+}
+
+func getLinterProcessors(patch string) []lp.Processor {
+	return []lp.Processor{
+		lp.NewExcludeProcessor(`(should have comment)`),
+		lp.UniqByLineProcessor{},
+		lp.NewDiffProcessor(patch),
+		lp.MaxLinterIssuesPerFile{},
+	}
+}
+
+func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig) (*githubGo, error) {
+	if cfg.exec == nil {
+		exec, err := makeExecutor(c)
+		if err != nil {
+			return nil, err
+		}
+		cfg.exec = exec
+	}
+
+	if cfg.repoFetcher == nil {
+		cfg.repoFetcher = fetchers.Git{}
+	}
+
+	if cfg.linters == nil {
+		cfg.linters = golinters.GetSupportedLinters()
+	}
+
+	if cfg.client == nil {
+		cfg.client = github.NewMyClient()
+	}
+
+	if cfg.reporter == nil {
+		cfg.reporter = reporters.NewGithubReviewer(c, cfg.client)
+	}
+
+	if cfg.runner == nil {
+		patch, err := cfg.client.GetPullRequestPatch(ctx, c)
+		if err != nil {
+			return nil, fmt.Errorf("can't get patch: %s", err)
+		}
+
+		cfg.runner = linters.SimpleRunner{
+			Processors: getLinterProcessors(patch),
+		}
+	}
 
 	return &githubGo{
-		repoFetcher: f,
-		linters:     a,
-		reporter:    r,
-		exec:        exec,
-		client:      client,
-		context:     c,
+		context:        c,
+		githubGoConfig: cfg,
+	}, nil
+}
+
+func makeExecutor(c *github.Context) (executors.Executor, error) {
+	repo := c.Repo
+	exec, err := executors.NewTempDirShell("gopath")
+	if err != nil {
+		return nil, fmt.Errorf("can't create temp dir shell: %s", err)
 	}
+
+	gopath := exec.WorkDir()
+	wd := path.Join(gopath, "src", "github.com", repo.Owner, repo.Name)
+	if err := os.MkdirAll(wd, os.ModePerm); err != nil {
+		return nil, fmt.Errorf("can't create project dir %q: %s", wd, err)
+	}
+
+	goEnv := environments.NewGolang(gopath)
+	goEnv.Setup(exec)
+
+	return exec, nil
 }
 
 func (g githubGo) prepareRepo(ctx context.Context) error {
@@ -61,20 +124,7 @@ func (g githubGo) prepareRepo(ctx context.Context) error {
 }
 
 func (g githubGo) runLinters(ctx context.Context) ([]result.Issue, error) {
-	patch, err := g.client.GetPullRequestPatch(ctx, g.context)
-	if err != nil {
-		return nil, fmt.Errorf("can't get patch: %s", err)
-	}
-	r := linters.SimpleRunner{
-		Processors: []lp.Processor{
-			lp.NewExcludeProcessor(`(should have comment)`),
-			lp.UniqByLineProcessor{},
-			lp.NewDiffProcessor(patch),
-			lp.MaxLinterIssuesPerFile{},
-		},
-	}
-
-	return r.Run(ctx, g.linters, g.exec)
+	return g.runner.Run(ctx, g.linters, g.exec)
 }
 
 func (g githubGo) processInWorkDir(ctx context.Context) error {

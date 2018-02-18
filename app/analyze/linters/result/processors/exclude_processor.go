@@ -18,6 +18,10 @@ func NewExcludeProcessor(pattern string) *ExcludeProcessor {
 	}
 }
 
+func (p ExcludeProcessor) Name() string {
+	return "exclude"
+}
+
 func (p ExcludeProcessor) processResult(res result.Result) result.Result {
 	newRes := res
 	newRes.Issues = []result.Issue{}

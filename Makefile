@@ -21,4 +21,7 @@ test:
 
 test_slow:
 	SLOW_TESTS_ENABLED=1 go test -v ./app/analyze -run TestAnalyzeSelfRepo
-	SLOW_TESTS_ENABLED=1 go test -v ./... -run TestRunLintersInDocker
+
+test_repo:
+	# set env vars BRANCH=master and REPO=owner/name
+	SLOW_TESTS_ENABLED=1 go test -v ./app/analyze/processors -run TestRunProcessorOnRepo
