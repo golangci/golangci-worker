@@ -8,6 +8,10 @@ var _ Processor = MaxLinterIssuesPerFile{}
 
 type fileToIssuesMap map[string][]result.Issue
 
+func (p MaxLinterIssuesPerFile) Name() string {
+	return "max_issues_per_file"
+}
+
 func (p MaxLinterIssuesPerFile) makeFileToIssuesMap(res result.Result) fileToIssuesMap {
 	fti := fileToIssuesMap{}
 	for _, i := range res.Issues {

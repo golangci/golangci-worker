@@ -19,6 +19,10 @@ func NewDiffProcessor(patch string) *DiffProcessor {
 	}
 }
 
+func (p DiffProcessor) Name() string {
+	return "diff"
+}
+
 func (p DiffProcessor) processResult(res result.Result) (*result.Result, error) {
 	// Make mapping to restore original issues metadata later
 	fli := makeFilesToLinesToIssuesMap([]result.Result{res})

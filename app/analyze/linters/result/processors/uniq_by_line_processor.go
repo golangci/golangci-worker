@@ -10,6 +10,10 @@ type UniqByLineProcessor struct{}
 
 var _ Processor = UniqByLineProcessor{}
 
+func (p UniqByLineProcessor) Name() string {
+	return "uniq_by_line"
+}
+
 func (p UniqByLineProcessor) Process(results []result.Result) ([]result.Result, error) {
 	fli := makeFilesToLinesToIssuesMap(results)
 
