@@ -28,7 +28,6 @@
 [[constraint]]
   branch = "master"
   name = "github.com/RichardKnop/machinery"
-  source = "https://github.com/apostov/machinery.git"
 
 [[constraint]]
   branch = "master"
