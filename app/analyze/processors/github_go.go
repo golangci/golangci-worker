@@ -144,7 +144,7 @@ func (g githubGo) prepareRepo(ctx context.Context) error {
 	projRoot := fsutils.GetProjectRoot()
 	depsPath := path.Join(projRoot, "app", "scripts", "ensure_deps.sh")
 	if out, err := g.exec.Run(ctx, "bash", depsPath); err != nil {
-		logrus.Warnf("Can't ensure deps: %s, %s", err, out)
+		analytics.Log(ctx).Warnf("Can't ensure deps: %s, %s", err, out)
 	}
 
 	return nil
@@ -191,7 +191,7 @@ func (g githubGo) processInWorkDir(ctx context.Context) error {
 func (g githubGo) setCommitStatus(ctx context.Context, status github.Status, desc string) {
 	err := g.client.SetCommitStatus(ctx, g.context, g.pr.GetHead().GetSHA(), status, desc)
 	if err != nil {
-		logrus.Warnf("Can't set commit status: %s", err)
+		analytics.Log(ctx).Warnf("Can't set commit status: %s", err)
 	}
 }
 

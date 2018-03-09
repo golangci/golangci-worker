@@ -19,10 +19,20 @@ type Tracker interface {
 type amplitudeMixpanelTracker struct{}
 
 func (t amplitudeMixpanelTracker) Track(ctx context.Context, eventName EventName) {
-	ec := ctx.Value(eventName).(eventCollector)
-	userID := ec["userIDString"].(string)
-	delete(ec, "userIDString")
-	eventProps := ec
+	trackingProps := getTrackingProps(ctx)
+	userID := trackingProps["userIDString"].(string)
+
+	eventProps := map[string]interface{}{}
+	for k, v := range trackingProps {
+		if k != "userIDString" {
+			eventProps[k] = v
+		}
+	}
+
+	addedEventProps := ctx.Value(eventName).(map[string]interface{})
+	for k, v := range addedEventProps {
+		eventProps[k] = v
+	}
 	log.Infof("track event %s with props %+v", eventName, eventProps)
 
 	ac := getAmplitudeClient()
@@ -41,28 +51,5 @@ func (t amplitudeMixpanelTracker) Track(ctx context.Context, eventName EventName
 			IP:         ip,
 			Properties: eventProps,
 		})
-	}
-}
-
-func GetTracker(_ context.Context) Tracker {
-	return amplitudeMixpanelTracker{}
-}
-
-type eventCollector map[string]interface{}
-
-func ContextWithEventPropsCollector(ctx context.Context, name EventName) context.Context {
-	return context.WithValue(ctx, name, eventCollector{})
-}
-
-func SaveEventProp(ctx context.Context, name EventName, key string, value interface{}) {
-	ec := ctx.Value(name).(eventCollector)
-	ec[key] = value
-}
-
-func SaveEventProps(ctx context.Context, name EventName, props map[string]interface{}) {
-	ec := ctx.Value(name).(eventCollector)
-
-	for k, v := range props {
-		ec[k] = v
 	}
 }

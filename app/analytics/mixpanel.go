@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/dukex/mixpanel"
+	"github.com/golangci/golangci-worker/app/utils/runmode"
 )
 
 var mixpanelClient mixpanel.Mixpanel
@@ -12,7 +13,7 @@ var mixpanelClientOnce sync.Once
 
 func getMixpanelClient() mixpanel.Mixpanel {
 	mixpanelClientOnce.Do(func() {
-		if os.Getenv("GO_ENV") == "prod" {
+		if runmode.IsProduction() {
 			apiKey := os.Getenv("MIXPANEL_API_KEY")
 			mixpanelClient = mixpanel.New(apiKey, "")
 		}

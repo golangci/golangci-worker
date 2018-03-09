@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/executors"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result/processors"
-	"github.com/sirupsen/logrus"
 )
 
 type Runner interface {
@@ -23,7 +23,7 @@ func (r SimpleRunner) Run(ctx context.Context, linters []Linter, exec executors.
 	for _, linter := range linters {
 		res, err := linter.Run(ctx, exec)
 		if err != nil {
-			logrus.Warnf("Can't run linter %+v: %s", linter, err)
+			analytics.Log(ctx).Warnf("Can't run linter %+v: %s", linter, err)
 			continue
 		}
 
