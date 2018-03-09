@@ -26,22 +26,45 @@ func newShell(workDir string) *shell {
 }
 
 func (s shell) Run(ctx context.Context, name string, args ...string) (string, error) {
-	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.Env = s.env
-	cmd.Dir = s.wd
-
 	startedAt := time.Now()
 	lines := []string{}
+	var isReaderClosed bool
 	outReader, finish, err := s.RunAsync(ctx, name, args...)
 	if err != nil {
 		return "", err
 	}
-	defer outReader.Close()
+	defer func() {
+		if !isReaderClosed {
+			if cerr := outReader.Close(); cerr != nil {
+				analytics.Log(ctx).Warnf("Failed to close shell reader: %s", cerr)
+			}
+		}
+	}()
+
+	endCh := make(chan struct{})
+	defer func() {
+		close(endCh)
+	}()
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			analytics.Log(ctx).Warnf("Closing shell reader on timeout")
+			if cerr := outReader.Close(); cerr != nil {
+				analytics.Log(ctx).Warnf("Failed to close shell reader: %s", cerr)
+			}
+			isReaderClosed = true
+		case <-endCh:
+		}
+	}()
 
 	scanner := bufio.NewScanner(outReader)
 	for scanner.Scan() {
 		line := scanner.Text()
-		logrus.Infof("shell[%s]: %s", s.wd, line)
+		if !strings.Contains(line, "should have comment") {
+			// HACK: get less logs
+			logrus.Infof("shell[%s]: %s", s.wd, line)
+		}
 		lines = append(lines, line)
 	}
 	if err = scanner.Err(); err != nil {

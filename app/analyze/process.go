@@ -21,6 +21,10 @@ func SetProcessorFactory(f processors.Factory) {
 }
 
 func analyze(ctx context.Context, repoOwner, repoName, githubAccessToken string, pullRequestNumber int, APIRequestID string, userID uint) error {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
 	t := &task.Task{
 		Context: github.Context{
 			Repo: github.Repo{

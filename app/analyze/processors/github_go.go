@@ -57,7 +57,7 @@ func (ap analyticsProcessor) Name() string {
 
 func getLinterProcessors(ctx context.Context, patch string) []lp.Processor {
 	return []lp.Processor{
-		lp.NewExcludeProcessor(`(should have comment)`),
+		lp.NewExcludeProcessor(`(should have comment|comment on exported method)`),
 		lp.UniqByLineProcessor{},
 		analyticsProcessor{
 			key: "totalIssues",
