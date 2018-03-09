@@ -3,6 +3,7 @@ package analyze
 import (
 	"context"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -85,6 +86,15 @@ func TestAnalyzeSelfRepo(t *testing.T) {
 	test.MarkAsSlow(t)
 	test.Init()
 
-	err := analyzeLogged(context.Background(), "golangci", "golangci-worker", os.Getenv("TEST_GITHUB_TOKEN"), 1, "", 1)
+	prNumber := 1
+	if pr := os.Getenv("PR"); pr != "" {
+		var err error
+		prNumber, err = strconv.Atoi(pr)
+		assert.NoError(t, err)
+	}
+	const userID = 1
+
+	err := analyzeLogged(context.Background(), "golangci", "golangci-worker",
+		os.Getenv("TEST_GITHUB_TOKEN"), prNumber, "", userID)
 	assert.NoError(t, err)
 }

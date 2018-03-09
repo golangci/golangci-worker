@@ -43,7 +43,11 @@ type analyticsProcessor struct {
 }
 
 func (ap analyticsProcessor) Process(results []result.Result) ([]result.Result, error) {
-	analytics.SaveEventProp(ap.ctx, analytics.EventPRChecked, ap.key, len(results))
+	issuesCount := 0
+	for _, r := range results {
+		issuesCount += len(r.Issues)
+	}
+	analytics.SaveEventProp(ap.ctx, analytics.EventPRChecked, ap.key, issuesCount)
 	return results, nil
 }
 

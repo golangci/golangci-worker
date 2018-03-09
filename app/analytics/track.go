@@ -5,6 +5,7 @@ import (
 
 	"github.com/dukex/mixpanel"
 	"github.com/savaki/amplitude-go"
+	log "github.com/sirupsen/logrus"
 )
 
 type EventName string
@@ -22,15 +23,7 @@ func (t amplitudeMixpanelTracker) Track(ctx context.Context, eventName EventName
 	userID := ec["userIDString"].(string)
 	delete(ec, "userIDString")
 	eventProps := ec
-	//userIDString := strconv.Itoa(int(a.UserID))
-	// eventProps := map[string]interface{}{
-	// 	"provider":       "github",
-	// 	"error":          a.Err.Error(),
-	// 	"repoName":       a.RepoName,
-	// 	"totalIssues":    a.TotalIssues,
-	// 	"reportedIssues": a.ReportedIssues,
-	// 	"duration":       a.TotalDuration,
-	// }
+	log.Infof("track event %s with props %+v", eventName, eventProps)
 
 	ac := getAmplitudeClient()
 	if ac != nil {
