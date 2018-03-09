@@ -3,7 +3,6 @@ package analyze
 import (
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 	"time"
 
@@ -12,8 +11,6 @@ import (
 	"github.com/golangci/golangci-worker/app/analyze/task"
 	"github.com/golangci/golangci-worker/app/utils/github"
 	"github.com/golangci/golangci-worker/app/utils/queue"
-	"github.com/sirupsen/logrus"
-	"github.com/stvp/rollbar"
 )
 
 var processorFactory = processors.NewGithubFactory()
@@ -48,21 +45,23 @@ func analyze(ctx context.Context, repoOwner, repoName, githubAccessToken string,
 	return nil
 }
 
-func analyzeLogged(ctx context.Context, repoOwner, repoName, githubAccessToken string, pullRequestNumber int, APIRequestID string, userID uint) error {
+func makeContext(ctx context.Context, trackingProps map[string]interface{}) context.Context {
 	ctx = analytics.ContextWithEventPropsCollector(ctx, analytics.EventPRChecked)
-	initalProps := map[string]interface{}{
+	ctx = analytics.ContextWithTrackingProps(ctx, trackingProps)
+	return ctx
+}
+
+func analyzeLogged(ctx context.Context, repoOwner, repoName, githubAccessToken string, pullRequestNumber int, APIRequestID string, userID uint) error {
+	trackingProps := map[string]interface{}{
 		"repoName":     fmt.Sprintf("%s/%s", repoOwner, repoName),
 		"provider":     "github",
 		"prNumber":     pullRequestNumber,
 		"userIDString": strconv.Itoa(int(userID)),
 	}
-	analytics.SaveEventProps(ctx, analytics.EventPRChecked, initalProps)
+	ctx = makeContext(ctx, trackingProps)
 
 	startedAt := time.Now()
 	err := analyze(ctx, repoOwner, repoName, githubAccessToken, pullRequestNumber, APIRequestID, userID)
-	if err != nil {
-		logrus.Errorf("processing failed: %s", err)
-	}
 
 	props := map[string]interface{}{
 		"durationSeconds": int(time.Since(startedAt) / time.Second),
@@ -79,19 +78,10 @@ func analyzeLogged(ctx context.Context, repoOwner, repoName, githubAccessToken s
 	tracker.Track(ctx, analytics.EventPRChecked)
 
 	if err != nil {
-		trackError(ctx, err, initalProps)
+		analytics.Log(ctx).Errorf("processing failed: %s", err)
 	}
 
 	return err
-}
-
-func trackError(ctx context.Context, err error, props map[string]interface{}) {
-	f := &rollbar.Field{
-		Name: "props",
-		Data: props,
-	}
-	rollbar.Error("ERROR", err, f)
-	logrus.Warnf("Tracked error to rollbar: %s", err)
 }
 
 func RegisterTasks() {
@@ -110,12 +100,4 @@ func RunWorker() error {
 	}
 
 	return nil
-}
-
-func init() {
-	rollbar.Token = os.Getenv("ROLLBAR_API_TOKEN")
-	goEnv := os.Getenv("GO_ENV")
-	if goEnv == "prod" {
-		rollbar.Environment = "production" // defaults to "development"
-	}
 }

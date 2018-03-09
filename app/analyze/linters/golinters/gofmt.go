@@ -5,9 +5,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/executors"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
-	"github.com/sirupsen/logrus"
 	"sourcegraph.com/sourcegraph/go-diff/diff"
 )
 
@@ -53,14 +53,14 @@ func (g gofmt) extractIssuesFromPatch(patch string) ([]result.Issue, error) {
 	issues := []result.Issue{}
 	for _, d := range diffs {
 		if len(d.Hunks) == 0 {
-			logrus.Warnf("Got no hunks in diff %+v", d)
+			analytics.Log(context.TODO()).Warnf("Got no hunks in diff %+v", d)
 			continue
 		}
 
 		for _, hunk := range d.Hunks {
 			lineNumber, err := getFirstDeletedLineNumberInHunk(hunk)
 			if err != nil {
-				logrus.Warnf("Can't get first delete line number for hunk: %s", err)
+				analytics.Log(context.TODO()).Warnf("Can't get first delete line number for hunk: %s", err)
 				continue
 			}
 

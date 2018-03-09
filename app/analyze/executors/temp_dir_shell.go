@@ -1,13 +1,14 @@
 package executors
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 
-	"github.com/sirupsen/logrus"
+	"github.com/golangci/golangci-worker/app/analytics"
 )
 
 type TempDirShell struct {
@@ -47,7 +48,7 @@ func (s *TempDirShell) SetWorkDir(wd string) {
 
 func (s TempDirShell) Clean() {
 	if err := os.RemoveAll(s.wd); err != nil {
-		logrus.Warnf("Can't remove temp dir %s: %s", s.wd, err)
+		analytics.Log(context.TODO()).Warnf("Can't remove temp dir %s: %s", s.wd, err)
 	}
 }
 

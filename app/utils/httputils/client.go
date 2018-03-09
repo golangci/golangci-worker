@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/levigross/grequests"
-	"github.com/sirupsen/logrus"
 )
 
 type Client interface {
@@ -25,7 +25,7 @@ func (c GrequestsClient) Get(ctx context.Context, url string) (io.ReadCloser, er
 
 	if !resp.Ok {
 		if cerr := resp.Close(); cerr != nil {
-			logrus.Warnf("Can't close %q response: %s", url, cerr)
+			analytics.Log(ctx).Warnf("Can't close %q response: %s", url, cerr)
 		}
 
 		return nil, fmt.Errorf("got error code from %q: %d", url, resp.StatusCode)

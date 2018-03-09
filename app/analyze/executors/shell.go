@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/sirupsen/logrus"
 )
 
@@ -44,7 +45,7 @@ func (s shell) Run(ctx context.Context, name string, args ...string) (string, er
 		lines = append(lines, line)
 	}
 	if err = scanner.Err(); err != nil {
-		logrus.Warnf("Out lines scanning error: %s", err)
+		analytics.Log(ctx).Warnf("Out lines scanning error: %s", err)
 	}
 
 	err = finish()

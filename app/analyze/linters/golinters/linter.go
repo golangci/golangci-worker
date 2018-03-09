@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"text/template"
 
+	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/executors"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
-	"github.com/sirupsen/logrus"
 )
 
 type linterConfig struct {
@@ -124,7 +124,7 @@ func (lint linter) makeIssue(vars regexpVars) (*result.Issue, error) {
 	if vars["line"] != "" {
 		line, err = strconv.Atoi(vars["line"])
 		if err != nil {
-			logrus.Warnf("Can't parse line %q: %s", vars["line"], err)
+			analytics.Log(context.TODO()).Warnf("Can't parse line %q: %s", vars["line"], err)
 		}
 	}
 
@@ -142,13 +142,13 @@ func (lint linter) parseLinterOut(out string) []result.Issue {
 	for scanner.Scan() {
 		vars, err := lint.parseLinterOutLine(scanner.Text())
 		if err != nil {
-			logrus.Warnf("Can't parse linter out line: %s", err)
+			analytics.Log(context.TODO()).Warnf("Can't parse linter out line: %s", err)
 			continue
 		}
 
 		issue, err := lint.makeIssue(vars)
 		if err != nil {
-			logrus.Warnf("Can't make issue: %s", err)
+			analytics.Log(context.TODO()).Warnf("Can't make issue: %s", err)
 			continue
 		}
 

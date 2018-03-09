@@ -5,9 +5,10 @@ package fetchers
 
 import (
 	context "context"
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	executors "github.com/golangci/golangci-worker/app/analyze/executors"
-	reflect "reflect"
 )
 
 // MockFetcher is a mock of Fetcher interface

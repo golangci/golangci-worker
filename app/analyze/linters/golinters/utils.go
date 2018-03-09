@@ -1,12 +1,13 @@
 package golinters
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"path/filepath"
 
+	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/utils/fsutils"
-	"github.com/sirupsen/logrus"
 )
 
 type ProjectPaths struct {
@@ -16,7 +17,7 @@ type ProjectPaths struct {
 
 func processPaths(root string, paths []string, maxPaths int) ([]string, error) {
 	if len(paths) >= maxPaths {
-		logrus.Warnf("Gofmt: got too much paths (%d), analyze first %d", len(paths), maxPaths)
+		analytics.Log(context.TODO()).Warnf("Gofmt: got too much paths (%d), analyze first %d", len(paths), maxPaths)
 		paths = paths[:maxPaths]
 	}
 
