@@ -103,6 +103,12 @@ func TestPathResolverCommonCases(t *testing.T) {
 			expDirs: []string{"."},
 		},
 		{
+			name:    "testdata is excluded",
+			prepare: []string{"testdata/"},
+			resolve: []string{"./"},
+			expDirs: []string{"."},
+		},
+		{
 			name:    "vendor implicitely resolved",
 			prepare: []string{"vendor/"},
 			resolve: []string{"./vendor"},
@@ -137,8 +143,20 @@ func TestPathResolverCommonCases(t *testing.T) {
 			expFiles: []string{"a/b/c.go", "a/d.txt"},
 		},
 		{
-			name:    ".git is always ignored",
-			prepare: []string{".git/a.go"},
+			name:    ".* is always ignored",
+			prepare: []string{".git/a.go", ".circleci/b.go"},
+			resolve: []string{"./..."},
+			expDirs: []string{"."},
+		},
+		{
+			name:    "exclude dirs on any depth level",
+			prepare: []string{"ok/.git/a.go"},
+			resolve: []string{"./..."},
+			expDirs: []string{".", "ok"},
+		},
+		{
+			name:    "ignore _*",
+			prepare: []string{"_any/a.go"},
 			resolve: []string{"./..."},
 			expDirs: []string{"."},
 		},
