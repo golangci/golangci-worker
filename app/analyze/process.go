@@ -65,7 +65,7 @@ func analyzeLogged(ctx context.Context, repoOwner, repoName, githubAccessToken s
 	}
 
 	props := map[string]interface{}{
-		"durationSeconds": time.Since(startedAt) / time.Second,
+		"durationSeconds": int(time.Since(startedAt) / time.Second),
 	}
 	if err == nil {
 		props["status"] = "ok"

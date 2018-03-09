@@ -19,9 +19,10 @@ install_gometalinter:
 test:
 	go test -v ./...
 
-test_slow:
+test_repo:
+	# set env var PR
 	SLOW_TESTS_ENABLED=1 go test -v ./app/analyze -run TestAnalyzeSelfRepo
 
-test_repo:
+test_repo_processor:
 	# set env vars BRANCH=master and REPO=owner/name
 	SLOW_TESTS_ENABLED=1 go test -v ./app/analyze/processors -run TestRunProcessorOnRepo
