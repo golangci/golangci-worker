@@ -61,7 +61,6 @@ func NewPathResolver(excludeDirs, allowedFileExtensions []string) *PathResolver 
 	for _, dir := range excludeDirs {
 		excludeDirsMap[dir] = true
 	}
-	excludeDirsMap[".git"] = true // always ignore it to save crawling time and prevent bugs
 
 	allowedFileExtensionsMap := map[string]bool{}
 	for _, fe := range allowedFileExtensions {
@@ -75,7 +74,18 @@ func NewPathResolver(excludeDirs, allowedFileExtensions []string) *PathResolver 
 }
 
 func (pr PathResolver) isIgnoredDir(dir string) bool {
-	return pr.excludeDirs[filepath.Clean(dir)]
+	dirName := filepath.Base(filepath.Clean(dir)) // ignore dirs on any depth level
+
+	// https://github.com/golang/dep/issues/298
+	// https://github.com/tools/godep/issues/140
+	if strings.HasPrefix(dirName, ".") && dirName != "." {
+		return true
+	}
+	if strings.HasPrefix(dirName, "_") {
+		return true
+	}
+
+	return pr.excludeDirs[dirName]
 }
 
 func (pr PathResolver) isAllowedFile(path string) bool {
