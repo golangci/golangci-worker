@@ -4,6 +4,13 @@ set -x
 
 echo "GOPATH='$GOPATH'"
 
+if [ -d "vendor" ]; then
+  if [[ $(find vendor -name "*.go" | head -1) ]]; then
+    echo "vendor dir exists with go sources, skip vendoring"
+    exit 0
+  fi
+fi
+
 if [[ -f 'Gopkg.toml' ]]; then
   	echo 'Dep was detected'
   	dep ensure -v

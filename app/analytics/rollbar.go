@@ -10,7 +10,7 @@ import (
 
 func trackError(ctx context.Context, err error, level string) {
 	if !runmode.IsProduction() {
-		panic(err)
+		return
 	}
 
 	trackingProps := getTrackingProps(ctx)

@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/golangci/golangci-worker/app/analytics"
@@ -264,6 +265,19 @@ func TestSetCommitStatusSuccessOnError(t *testing.T) {
 	assert.Error(t, p.Process(testCtx))
 }
 
+func TestProcessorTimeout(t *testing.T) {
+	startedAt := time.Now()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx, cancel := context.WithTimeout(testCtx, 100*time.Millisecond)
+	defer cancel()
+	p := getRealisticTestProcessor(ctx, t, ctrl)
+
+	assert.Error(t, p.Process(ctx))
+	assert.True(t, time.Since(startedAt) < 300*time.Millisecond)
+}
+
 func getLinterProcessorsExceptDiff() []lp.Processor {
 	ret := []lp.Processor{}
 	dp := lp.NewDiffProcessor("")
@@ -299,14 +313,8 @@ func getTestingRepo(t *testing.T) (*github.Context, string) {
 	return c, branch
 }
 
-func TestRunProcessorOnRepo(t *testing.T) {
-	test.MarkAsSlow(t)
-
+func getRealisticTestProcessor(ctx context.Context, t *testing.T, ctrl *gomock.Controller) *githubGo {
 	c, branch := getTestingRepo(t)
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
 	cloneURL := fmt.Sprintf("git@github.com:%s/%s.git", c.Repo.Owner, c.Repo.Name)
 	pr := &gh.PullRequest{
 		Head: &gh.PullRequestBranch{
@@ -329,9 +337,19 @@ func TestRunProcessorOnRepo(t *testing.T) {
 		client:   gc,
 	}
 
-	p, err := newGithubGo(testCtx, c, cfg)
+	p, err := newGithubGo(ctx, c, cfg)
 	assert.NoError(t, err)
 
-	err = p.Process(testCtx)
+	return p
+}
+
+func TestRunProcessorOnRepo(t *testing.T) {
+	test.MarkAsSlow(t)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	p := getRealisticTestProcessor(testCtx, t, ctrl)
+	err := p.Process(testCtx)
 	assert.NoError(t, err)
 }
