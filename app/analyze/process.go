@@ -3,6 +3,7 @@ package analyze
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -109,4 +110,12 @@ func RunWorker() error {
 	}
 
 	return nil
+}
+
+func init() {
+	rollbar.Token = os.Getenv("ROLLBAR_API_TOKEN")
+	goEnv := os.Getenv("GO_ENV")
+	if goEnv == "prod" {
+		rollbar.Environment = "production" // defaults to "development"
+	}
 }
