@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -82,7 +83,7 @@ func TestSendReceiveProcessing(t *testing.T) {
 	}
 }
 
-func TestAnalyzeSelfRepo(t *testing.T) {
+func TestAnalyzeRepo(t *testing.T) {
 	test.MarkAsSlow(t)
 	test.Init()
 
@@ -94,7 +95,14 @@ func TestAnalyzeSelfRepo(t *testing.T) {
 	}
 	const userID = 1
 
-	err := analyzeLogged(context.Background(), "golangci", "golangci-worker",
+	repoOwner := "golangci"
+	repoName := "golangci-worker"
+	if r := os.Getenv("REPO"); r != "" {
+		parts := strings.SplitN(r, "/", 2)
+		repoOwner, repoName = parts[0], parts[1]
+	}
+
+	err := analyzeLogged(context.Background(), repoOwner, repoName,
 		os.Getenv("TEST_GITHUB_TOKEN"), prNumber, "", userID)
 	assert.NoError(t, err)
 }

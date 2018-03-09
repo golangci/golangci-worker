@@ -11,6 +11,7 @@ import (
 	"github.com/golangci/golangci-worker/app/analyze/task"
 	"github.com/golangci/golangci-worker/app/utils/github"
 	"github.com/golangci/golangci-worker/app/utils/queue"
+	"github.com/sirupsen/logrus"
 )
 
 var processorFactory = processors.NewGithubFactory()
@@ -51,6 +52,16 @@ func makeContext(ctx context.Context, trackingProps map[string]interface{}) cont
 	return ctx
 }
 
+func analyzeWrapped(ctx context.Context, repoOwner, repoName, githubAccessToken string, pullRequestNumber int, APIRequestID string, userID uint) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic recovered: %v", r)
+			logrus.Error(err)
+		}
+	}()
+	return analyzeLogged(ctx, repoOwner, repoName, githubAccessToken, pullRequestNumber, APIRequestID, userID)
+}
+
 func analyzeLogged(ctx context.Context, repoOwner, repoName, githubAccessToken string, pullRequestNumber int, APIRequestID string, userID uint) error {
 	trackingProps := map[string]interface{}{
 		"repoName":     fmt.Sprintf("%s/%s", repoOwner, repoName),
@@ -87,7 +98,7 @@ func analyzeLogged(ctx context.Context, repoOwner, repoName, githubAccessToken s
 func RegisterTasks() {
 	server := queue.GetServer()
 	server.RegisterTasks(map[string]interface{}{
-		"analyze": analyzeLogged,
+		"analyze": analyzeWrapped,
 	})
 }
 

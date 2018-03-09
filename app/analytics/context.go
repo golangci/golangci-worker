@@ -23,19 +23,17 @@ func getTrackingProps(ctx context.Context) map[string]interface{} {
 	return tp.(map[string]interface{})
 }
 
-type eventCollector map[string]interface{}
-
 func ContextWithEventPropsCollector(ctx context.Context, name EventName) context.Context {
-	return context.WithValue(ctx, name, eventCollector{})
+	return context.WithValue(ctx, name, map[string]interface{}{})
 }
 
 func SaveEventProp(ctx context.Context, name EventName, key string, value interface{}) {
-	ec := ctx.Value(name).(eventCollector)
+	ec := ctx.Value(name).(map[string]interface{})
 	ec[key] = value
 }
 
 func SaveEventProps(ctx context.Context, name EventName, props map[string]interface{}) {
-	ec := ctx.Value(name).(eventCollector)
+	ec := ctx.Value(name).(map[string]interface{})
 
 	for k, v := range props {
 		ec[k] = v

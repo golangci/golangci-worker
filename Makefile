@@ -20,8 +20,8 @@ test:
 	go test -v ./...
 
 test_repo:
-	# set env var PR
-	SLOW_TESTS_ENABLED=1 go test -v ./app/analyze -run TestAnalyzeSelfRepo
+	# set envs var PR, REPO
+	SLOW_TESTS_ENABLED=1 go test -v ./app/analyze -run TestAnalyzeRepo
 
 test_repo_processor:
 	# set env vars BRANCH=master and REPO=owner/name
