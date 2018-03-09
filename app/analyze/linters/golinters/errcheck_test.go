@@ -23,7 +23,7 @@ func TestErrcheckSimple(t *testing.T) {
 }
 
 func TestErrcheckIgnoreClose(t *testing.T) {
-	const source = `package p
+	sources := []string{`package p
 
 	import "os"
 
@@ -36,9 +36,25 @@ func TestErrcheckIgnoreClose(t *testing.T) {
 		f.Close()
 		return nil
 	}
-`
+`,
+		`package p
 
-	test.ExpectIssues(t, errCheck, source, []result.Issue{})
+import "net/http"
+
+func f() {
+	resp, err := http.Get("http://example.com/")
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	panic(resp)
+}
+`}
+
+	for _, source := range sources {
+		test.ExpectIssues(t, errCheck, source, []result.Issue{})
+	}
 }
 
 // TODO: add cases of non-compiling code

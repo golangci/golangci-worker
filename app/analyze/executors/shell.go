@@ -50,7 +50,9 @@ func (s shell) Run(ctx context.Context, name string, args ...string) (string, er
 	scanner := bufio.NewScanner(outReader)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if !strings.Contains(line, "should have comment") && !strings.Contains(line, "comment on exported method") {
+		if !strings.Contains(line, "should have comment") &&
+			!strings.Contains(line, "comment on exported method") &&
+			!strings.Contains(line, ".Close()") {
 			// HACK: get less logs
 			logrus.Infof("shell[%s]: %s", s.wd, line)
 		}
