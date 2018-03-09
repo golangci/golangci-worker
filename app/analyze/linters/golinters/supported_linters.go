@@ -7,10 +7,12 @@ const pathLineColMessage = `^(?P<path>.*?\.go):(?P<line>\d+):(?P<col>\d+):\s*(?P
 var errCheck = newLinter("errcheck",
 	newLinterConfig(
 		"Error return value is not checked",
-		pathLineColMessage),
+		pathLineColMessage,
+		"\\.Close()", // It's annoying and not critical error to ignore Close() errors),
+	),
 )
 
-var golint = newLinter("golint", newLinterConfig("", pathLineColMessage))
+var golint = newLinter("golint", newLinterConfig("", pathLineColMessage, ""))
 
 func GetSupportedLinters() []linters.Linter {
 	return []linters.Linter{gofmt{}, gofmt{useGoimports: true}, golint, errCheck}

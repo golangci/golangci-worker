@@ -28,32 +28,21 @@ func newShell(workDir string) *shell {
 func (s shell) Run(ctx context.Context, name string, args ...string) (string, error) {
 	startedAt := time.Now()
 	lines := []string{}
-	var isReaderClosed bool
 	outReader, finish, err := s.RunAsync(ctx, name, args...)
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		if !isReaderClosed {
-			if cerr := outReader.Close(); cerr != nil {
-				analytics.Log(ctx).Warnf("Failed to close shell reader: %s", cerr)
-			}
-		}
-	}()
 
 	endCh := make(chan struct{})
-	defer func() {
-		close(endCh)
-	}()
+	defer close(endCh)
 
 	go func() {
 		select {
 		case <-ctx.Done():
 			analytics.Log(ctx).Warnf("Closing shell reader on timeout")
 			if cerr := outReader.Close(); cerr != nil {
-				analytics.Log(ctx).Warnf("Failed to close shell reader: %s", cerr)
+				analytics.Log(ctx).Warnf("Failed to close shell reader on deadline: %s", cerr)
 			}
-			isReaderClosed = true
 		case <-endCh:
 		}
 	}()

@@ -18,19 +18,27 @@ import (
 )
 
 type linterConfig struct {
-	messageTemplate     *template.Template
-	pattern             *regexp.Regexp
-	args                []string
-	issuesFoundExitCode int
+	messageTemplate         *template.Template
+	pattern                 *regexp.Regexp
+	excludeByMessagePattern *regexp.Regexp
+	args                    []string
+	issuesFoundExitCode     int
 }
 
-func newLinterConfig(messageTemplate, pattern string, args ...string) *linterConfig {
+func newLinterConfig(messageTemplate, pattern, excludeByMessagePattern string, args ...string) *linterConfig {
 	if messageTemplate == "" {
 		messageTemplate = "{{.message}}"
 	}
+
+	var excludeByMessagePatternRe *regexp.Regexp
+	if excludeByMessagePattern != "" {
+		excludeByMessagePatternRe = regexp.MustCompile(excludeByMessagePattern)
+	}
+
 	return &linterConfig{
-		messageTemplate:     template.Must(template.New("message").Parse(messageTemplate)),
-		pattern:             regexp.MustCompile(pattern),
+		messageTemplate:         template.Must(template.New("message").Parse(messageTemplate)),
+		pattern:                 regexp.MustCompile(pattern),
+		excludeByMessagePattern: excludeByMessagePatternRe,
 		args:                args,
 		issuesFoundExitCode: 1,
 	}
@@ -143,6 +151,12 @@ func (lint linter) parseLinterOut(out string) []result.Issue {
 		vars, err := lint.parseLinterOutLine(scanner.Text())
 		if err != nil {
 			analytics.Log(context.TODO()).Warnf("Can't parse linter out line: %s", err)
+			continue
+		}
+
+		message := vars["message"]
+		ex := lint.excludeByMessagePattern
+		if message != "" && ex != nil && ex.MatchString(message) {
 			continue
 		}
 
