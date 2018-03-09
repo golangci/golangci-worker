@@ -21,7 +21,6 @@
     "v1/tasks"
   ]
   revision = "c5e057032f00db21ac4deb39bb3bc5eaa2112cff"
-  source = "https://github.com/RichardKnop/machinery.git"
 
 [[projects]]
   branch = "master"
@@ -72,6 +71,12 @@
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "ecdeabc65495df2dec95d7c4a4c3e021903035e5"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/dukex/mixpanel"
+  packages = ["."]
+  revision = "53bfdf679eecb9731ac23f01a89d8a6904f09037"
 
 [[projects]]
   name = "github.com/garyburd/redigo"
@@ -155,6 +160,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/savaki/amplitude-go"
+  packages = ["."]
+  revision = "f62e3b57c0e4d24da1fad27aa5181c59b0f7868b"
+
+[[projects]]
+  branch = "master"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
   revision = "d682213848ed68c0a260ca37d6dd5ace8423f5ba"
@@ -170,6 +181,12 @@
   name = "github.com/stretchr/testify"
   packages = ["assert"]
   revision = "18a02ba4a312f95da08ff4cfc0055750ce50ae9e"
+
+[[projects]]
+  name = "github.com/stvp/rollbar"
+  packages = ["."]
+  revision = "b20261800d8cda3be14dcef0d1a8320779bba61a"
+  version = "v0.5.1"
 
 [[projects]]
   branch = "master"
@@ -275,6 +292,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "30067f07b51cf428f42f56c69b220175410e0bbaa3591448762364b954114115"
+  inputs-digest = "b2ae6ce46fd2e775f7295e8b9b9b4391351e0902c2650b265ab30ae5079d58d9"
   solver-name = "gps-cdcl"
   solver-version = 1

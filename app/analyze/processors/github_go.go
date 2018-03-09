@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/environments"
 	"github.com/golangci/golangci-worker/app/analyze/executors"
 	"github.com/golangci/golangci-worker/app/analyze/fetchers"
@@ -36,12 +37,34 @@ type githubGo struct {
 	githubGoConfig
 }
 
-func getLinterProcessors(patch string) []lp.Processor {
+type analyticsProcessor struct {
+	key string
+	ctx context.Context
+}
+
+func (ap analyticsProcessor) Process(results []result.Result) ([]result.Result, error) {
+	analytics.SaveEventProp(ap.ctx, analytics.EventPRChecked, ap.key, len(results))
+	return results, nil
+}
+
+func (ap analyticsProcessor) Name() string {
+	return fmt.Sprintf("analytics processor <%s>", ap.key)
+}
+
+func getLinterProcessors(ctx context.Context, patch string) []lp.Processor {
 	return []lp.Processor{
 		lp.NewExcludeProcessor(`(should have comment)`),
 		lp.UniqByLineProcessor{},
+		analyticsProcessor{
+			key: "totalIssues",
+			ctx: ctx,
+		},
 		lp.NewDiffProcessor(patch),
 		lp.MaxLinterIssuesPerFile{},
+		analyticsProcessor{
+			key: "reportedIssues",
+			ctx: ctx,
+		},
 	}
 }
 
@@ -77,7 +100,7 @@ func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig) (*g
 		}
 
 		cfg.runner = linters.SimpleRunner{
-			Processors: getLinterProcessors(patch),
+			Processors: getLinterProcessors(ctx, patch),
 		}
 	}
 

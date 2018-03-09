@@ -32,6 +32,10 @@ func Send(t *task.Task) error {
 				Type:  "string",
 				Value: t.APIRequestID,
 			},
+			{
+				Type:  "uint",
+				Value: t.UserID,
+			},
 		},
 		RetryCount: 3,
 	}

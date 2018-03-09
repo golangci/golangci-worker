@@ -85,6 +85,6 @@ func TestAnalyzeSelfRepo(t *testing.T) {
 	test.MarkAsSlow(t)
 	test.Init()
 
-	err := analyze(context.Background(), "golangci", "golangci-worker", os.Getenv("TEST_GITHUB_TOKEN"), 1, "")
+	err := analyzeLogged(context.Background(), "golangci", "golangci-worker", os.Getenv("TEST_GITHUB_TOKEN"), 1, "", 1)
 	assert.NoError(t, err)
 }
