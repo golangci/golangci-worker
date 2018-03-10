@@ -3,6 +3,7 @@ package golinters
 import "github.com/golangci/golangci-worker/app/analyze/linters"
 
 const pathLineColMessage = `^(?P<path>.*?\.go):(?P<line>\d+):(?P<col>\d+):\s*(?P<message>.*)$`
+const pathLineMessage = `^(?P<path>.*?\.go):(?P<line>\d+):\s*(?P<message>.*)$`
 
 var errCheck = newLinter("errcheck",
 	newLinterConfig(
@@ -13,7 +14,8 @@ var errCheck = newLinter("errcheck",
 )
 
 var golint = newLinter("golint", newLinterConfig("", pathLineColMessage, ""))
+var govet = newLinter("govet", newLinterConfig("", pathLineMessage, "", "--no-recurse"))
 
 func GetSupportedLinters() []linters.Linter {
-	return []linters.Linter{gofmt{}, gofmt{useGoimports: true}, golint, errCheck}
+	return []linters.Linter{gofmt{}, gofmt{useGoimports: true}, golint, errCheck, govet}
 }
