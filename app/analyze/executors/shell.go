@@ -59,7 +59,7 @@ func trackMemoryEveryNSeconds(ctx context.Context, name string, pid int) {
 	}
 	avg /= uint64(len(rssValues))
 	const MB = 1024 * 1024
-	analytics.Log(ctx).Debugf("Subprocess %q memory: got %d rss values, avg is %.1fMB, max is %.1fMB",
+	analytics.Log(ctx).Infof("Subprocess %q memory: got %d rss values, avg is %.1fMB, max is %.1fMB",
 		name, len(rssValues), float64(avg)/MB, float64(max)/MB)
 }
 
