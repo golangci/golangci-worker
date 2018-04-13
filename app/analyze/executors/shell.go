@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/golangci/golangci-worker/app/analytics"
-	"github.com/sirupsen/logrus"
 )
 
 type shell struct {
@@ -27,7 +26,6 @@ func newShell(workDir string) *shell {
 
 func (s shell) Run(ctx context.Context, name string, args ...string) (string, error) {
 	startedAt := time.Now()
-	lines := []string{}
 	outReader, finish, err := s.RunAsync(ctx, name, args...)
 	if err != nil {
 		return "", err
@@ -48,14 +46,10 @@ func (s shell) Run(ctx context.Context, name string, args ...string) (string, er
 	}()
 
 	scanner := bufio.NewScanner(outReader)
+	lines := []string{}
 	for scanner.Scan() {
 		line := scanner.Text()
-		if !strings.Contains(line, "should have comment") &&
-			!strings.Contains(line, "comment on exported method") &&
-			!strings.Contains(line, ".Close()") {
-			// HACK: get less logs
-			logrus.Infof("shell[%s]: %s", s.wd, line)
-		}
+		analytics.Log(ctx).Debugf("%s", line)
 		lines = append(lines, line)
 	}
 	if err = scanner.Err(); err != nil {
@@ -64,7 +58,11 @@ func (s shell) Run(ctx context.Context, name string, args ...string) (string, er
 
 	err = finish()
 
-	logrus.Infof("shell[%s]: %s %v executed for %s: %v", s.wd, name, args, time.Since(startedAt), err)
+	logger := analytics.Log(ctx).Debugf
+	if err != nil {
+		logger = analytics.Log(ctx).Warnf
+	}
+	logger("shell[%s]: %s %v executed for %s: %v", s.wd, name, args, time.Since(startedAt), err)
 
 	// XXX: it's important to not change error here, because it holds exit code
 	return strings.Join(lines, "\n"), err
@@ -77,9 +75,6 @@ func (s shell) RunAsync(ctx context.Context, name string, args ...string) (io.Re
 	cmd.Env = s.env
 	cmd.Dir = s.wd
 
-	logrus.Infof("shell[%s]: %s %v executing...", s.wd, name, args)
-	startedAt := time.Now()
-
 	outReader, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, nil, fmt.Errorf("can't make out pipe: %s", err)
@@ -89,7 +84,6 @@ func (s shell) RunAsync(ctx context.Context, name string, args ...string) (io.Re
 	if err := cmd.Start(); err != nil {
 		return nil, nil, err
 	}
-	logrus.Infof("shell[%s]: %s %v started for %s", s.wd, name, args, time.Since(startedAt))
 
 	return outReader, func() error {
 		// XXX: it's important to not change error here, because it holds exit code

@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
 	"github.com/golangci/golangci-worker/app/utils/github"
 	gh "github.com/google/go-github/github"
-	"github.com/sirupsen/logrus"
 )
 
 type GithubReviewer struct {
@@ -24,7 +24,7 @@ func NewGithubReviewer(c *github.Context, client github.Client) *GithubReviewer 
 
 func (gr GithubReviewer) Report(ctx context.Context, ref string, issues []result.Issue) error {
 	if len(issues) == 0 {
-		logrus.Infof("Nothing to report")
+		analytics.Log(ctx).Infof("Nothing to report")
 		return nil
 	}
 
@@ -48,6 +48,6 @@ func (gr GithubReviewer) Report(ctx context.Context, ref string, issues []result
 		return fmt.Errorf("can't create review %+v: %s", review, err)
 	}
 
-	logrus.Infof("Submitted review %+v", review)
+	analytics.Log(ctx).Infof("Submitted review %+v", review)
 	return nil
 }

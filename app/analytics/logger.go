@@ -11,6 +11,7 @@ type Logger interface {
 	Warnf(format string, args ...interface{})
 	Errorf(format string, args ...interface{})
 	Infof(format string, args ...interface{})
+	Debugf(format string, args ...interface{})
 }
 
 type logger struct {
@@ -35,6 +36,10 @@ func (log logger) Errorf(format string, args ...interface{}) {
 
 func (log logger) Infof(format string, args ...interface{}) {
 	log.le().Infof(format, args...)
+}
+
+func (log logger) Debugf(format string, args ...interface{}) {
+	log.le().Debugf(format, args...)
 }
 
 func Log(ctx context.Context) Logger {

@@ -4,3 +4,4 @@
 /golangci-worker
 /gometalinter_bin
 /bin
+/*.log

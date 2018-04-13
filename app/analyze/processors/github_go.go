@@ -18,7 +18,6 @@ import (
 	"github.com/golangci/golangci-worker/app/utils/fsutils"
 	"github.com/golangci/golangci-worker/app/utils/github"
 	gh "github.com/google/go-github/github"
-	"github.com/sirupsen/logrus"
 )
 
 type githubGoConfig struct {
@@ -170,7 +169,11 @@ func (g githubGo) processInWorkDir(ctx context.Context) error {
 		return err
 	}
 
-	logrus.Infof("Linters found next issues: %+v", issues)
+	if len(issues) == 0 {
+		analytics.Log(ctx).Infof("Linters found no issues")
+	} else {
+		analytics.Log(ctx).Infof("Linters found next issues: %+v", issues)
+	}
 	if err = g.reporter.Report(ctx, g.pr.GetHead().GetSHA(), issues); err != nil {
 		return fmt.Errorf("can't report: %s", err)
 	}
