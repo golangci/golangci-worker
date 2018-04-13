@@ -2,12 +2,16 @@ package github
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 
 	gh "github.com/google/go-github/github"
 )
 
 type Status string
+
+var ErrPRNotFound = errors.New("no such pull request")
 
 const (
 	StatusPending Status = "pending"
@@ -55,6 +59,11 @@ func (gc *MyClient) GetPullRequestPatch(ctx context.Context, c *Context) (string
 	raw, _, err := c.GetClient(ctx).PullRequests.GetRaw(ctx, c.Repo.Owner, c.Repo.Name,
 		c.PullRequestNumber, opts)
 	if err != nil {
+		if er, ok := err.(*gh.ErrorResponse); ok {
+			if er.Response.StatusCode == http.StatusNotFound {
+				return "", ErrPRNotFound
+			}
+		}
 		return "", fmt.Errorf("can't get patch for pull request: %s", err)
 	}
 

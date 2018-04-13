@@ -99,6 +99,9 @@ func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig) (*g
 	if cfg.runner == nil {
 		patch, err := cfg.client.GetPullRequestPatch(ctx, c)
 		if err != nil {
+			if err == github.ErrPRNotFound {
+				return nil, err
+			}
 			return nil, fmt.Errorf("can't get patch: %s", err)
 		}
 
