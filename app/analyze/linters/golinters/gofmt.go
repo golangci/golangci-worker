@@ -60,8 +60,8 @@ func (g gofmt) extractIssuesFromPatch(patch string) ([]result.Issue, error) {
 		for _, hunk := range d.Hunks {
 			lineNumber, err := getFirstDeletedLineNumberInHunk(hunk)
 			if err != nil {
-				analytics.Log(context.TODO()).Warnf("Can't get first delete line number for hunk: %s", err)
-				continue
+				analytics.Log(context.TODO()).Infof("Can't get first deleted line number for hunk: %s", err)
+				lineNumber = int(hunk.OrigStartLine) // use first line if no deletions:
 			}
 
 			text := "File is not gofmt-ed with -s"
