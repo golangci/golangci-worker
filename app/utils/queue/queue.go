@@ -23,7 +23,7 @@ func initServer() {
 		Broker:          redisURL,
 		DefaultQueue:    "machinery_tasks",
 		ResultBackend:   redisURL,
-		ResultsExpireIn: int((24 * time.Hour).Seconds()), // store results for 1 day
+		ResultsExpireIn: int((7 * 24 * time.Hour).Seconds()), // store results for 1 week
 	}
 
 	var err error

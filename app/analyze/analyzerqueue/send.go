@@ -37,7 +37,8 @@ func Send(t *task.Task) error {
 				Value: t.UserID,
 			},
 		},
-		RetryCount: 3,
+		RetryCount:   3,
+		RetryTimeout: 600, // 600 sec
 	}
 
 	_, err := queue.GetServer().SendTask(signature)
