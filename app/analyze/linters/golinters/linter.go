@@ -76,23 +76,49 @@ func (lint linter) doesExitCodeMeansIssuesWereFound(err error) bool {
 	return exitCode == lint.issuesFoundExitCode
 }
 
+func getOutTail(out string, linesCount int) string {
+	lines := strings.Split(out, "\n")
+	if len(lines) <= linesCount {
+		return out
+	}
+
+	return strings.Join(lines[len(lines)-linesCount:], "\n")
+}
+
 func (lint linter) Run(ctx context.Context, exec executors.Executor) (*result.Result, error) {
 	paths, err := getPathsForGoProject(exec.WorkDir())
 	if err != nil {
 		return nil, fmt.Errorf("can't get files to analyze: %s", err)
 	}
 
-	args := append([]string{}, lint.args...)
-	args = append(args, paths.dirs...)
+	retIssues := []result.Issue{}
 
-	out, err := exec.Run(ctx, lint.name, args...)
-	if err != nil && !lint.doesExitCodeMeansIssuesWereFound(err) {
-		return nil, fmt.Errorf("can't run linter %s with args %v: %s, %s", lint.name, lint.args, err, out)
+	const maxDirsPerRun = 100 // run one linter multiple times with groups of dirs: limit memory usage in the cost of higher CPU usage
+
+	for len(paths.dirs) != 0 {
+		args := append([]string{}, lint.args...)
+
+		dirsCount := len(paths.dirs)
+		if dirsCount > maxDirsPerRun {
+			dirsCount = maxDirsPerRun
+		}
+		dirs := paths.dirs[:dirsCount]
+		args = append(args, dirs...)
+
+		out, err := exec.Run(ctx, lint.name, args...)
+		if err != nil && !lint.doesExitCodeMeansIssuesWereFound(err) {
+			out = getOutTail(out, 10)
+			return nil, fmt.Errorf("can't run linter %s with args %v: %s, %s", lint.name, lint.args, err, out)
+		}
+
+		issues := lint.parseLinterOut(out)
+		retIssues = append(retIssues, issues...)
+
+		paths.dirs = paths.dirs[dirsCount:]
 	}
 
-	issues := lint.parseLinterOut(out)
 	return &result.Result{
-		Issues: issues,
+		Issues: retIssues,
 	}, nil
 }
 

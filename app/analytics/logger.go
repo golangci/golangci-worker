@@ -3,9 +3,9 @@ package analytics
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 
+	"github.com/golangci/golangci-worker/app/utils/runmode"
 	"github.com/sirupsen/logrus"
 )
 
@@ -13,7 +13,7 @@ var initLogrusOnce sync.Once
 
 func initLogrus() {
 	level := logrus.InfoLevel
-	if os.Getenv("DEBUG") == "1" {
+	if runmode.IsDebug() {
 		level = logrus.DebugLevel
 	}
 	logrus.SetLevel(level)
