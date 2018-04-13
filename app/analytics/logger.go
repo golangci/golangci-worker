@@ -3,9 +3,21 @@ package analytics
 import (
 	"context"
 	"fmt"
+	"os"
+	"sync"
 
 	"github.com/sirupsen/logrus"
 )
+
+var initLogrusOnce sync.Once
+
+func initLogrus() {
+	level := logrus.InfoLevel
+	if os.Getenv("DEBUG") == "1" {
+		level = logrus.DebugLevel
+	}
+	logrus.SetLevel(level)
+}
 
 type Logger interface {
 	Warnf(format string, args ...interface{})
@@ -43,6 +55,8 @@ func (log logger) Debugf(format string, args ...interface{}) {
 }
 
 func Log(ctx context.Context) Logger {
+	initLogrusOnce.Do(initLogrus)
+
 	return logger{
 		ctx: ctx,
 	}
