@@ -18,6 +18,7 @@ import (
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
 	lp "github.com/golangci/golangci-worker/app/analyze/linters/result/processors"
 	"github.com/golangci/golangci-worker/app/analyze/reporters"
+	"github.com/golangci/golangci-worker/app/analyze/status"
 	"github.com/golangci/golangci-worker/app/test"
 	"github.com/golangci/golangci-worker/app/utils/fsutils"
 	"github.com/golangci/golangci-worker/app/utils/github"
@@ -43,6 +44,7 @@ var testPR = &gh.PullRequest{
 		SHA: gh.String(testSHA),
 	},
 }
+var testAnalysisGUID = "test-guid"
 
 func getFakeLinters(ctrl *gomock.Controller, issues ...result.Issue) []linters.Linter {
 	a := linters.NewMockLinter(ctrl)
@@ -75,6 +77,12 @@ func getNopReporter(ctrl *gomock.Controller) reporters.Reporter {
 func getErroredReporter(ctrl *gomock.Controller) reporters.Reporter {
 	r := reporters.NewMockReporter(ctrl)
 	r.EXPECT().Report(testCtxMatcher, any, any).Return(fmt.Errorf("can't report"))
+	return r
+}
+
+func getNopStatusUpdater(ctrl *gomock.Controller) status.Updater {
+	r := status.NewMockUpdater(ctrl)
+	r.EXPECT().UpdateStatus(any, any, any).AnyTimes().Return(nil)
 	return r
 }
 
@@ -153,12 +161,15 @@ func fillWithNops(ctrl *gomock.Controller, cfg *githubGoConfig) {
 	if cfg.reporter == nil {
 		cfg.reporter = getNopReporter(ctrl)
 	}
+	if cfg.statusUpdater == nil {
+		cfg.statusUpdater = getNopStatusUpdater(ctrl)
+	}
 }
 
 func getNopedProcessor(t *testing.T, ctrl *gomock.Controller, cfg githubGoConfig) *githubGo {
 	fillWithNops(ctrl, &cfg)
 
-	p, err := newGithubGo(testCtx, &github.FakeContext, cfg)
+	p, err := newGithubGo(testCtx, &github.FakeContext, cfg, testAnalysisGUID)
 	assert.NoError(t, err)
 
 	return p
@@ -182,7 +193,7 @@ func getGithubProcessorWithIssues(t *testing.T, ctrl *gomock.Controller,
 		client:      getNopGithubClient(ctrl),
 	}
 
-	p, err := newGithubGo(testCtx, &github.FakeContext, cfg)
+	p, err := newGithubGo(testCtx, &github.FakeContext, cfg, testAnalysisGUID)
 	assert.NoError(t, err)
 	return p
 }
@@ -337,7 +348,7 @@ func getRealisticTestProcessor(ctx context.Context, t *testing.T, ctrl *gomock.C
 		client:   gc,
 	}
 
-	p, err := newGithubGo(ctx, c, cfg)
+	p, err := newGithubGo(ctx, c, cfg, testAnalysisGUID)
 	assert.NoError(t, err)
 
 	return p

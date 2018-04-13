@@ -15,22 +15,25 @@ import (
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
 	lp "github.com/golangci/golangci-worker/app/analyze/linters/result/processors"
 	"github.com/golangci/golangci-worker/app/analyze/reporters"
+	"github.com/golangci/golangci-worker/app/analyze/status"
 	"github.com/golangci/golangci-worker/app/utils/fsutils"
 	"github.com/golangci/golangci-worker/app/utils/github"
 	gh "github.com/google/go-github/github"
 )
 
 type githubGoConfig struct {
-	repoFetcher fetchers.Fetcher
-	linters     []linters.Linter
-	runner      linters.Runner
-	reporter    reporters.Reporter
-	exec        executors.Executor
-	client      github.Client
+	repoFetcher   fetchers.Fetcher
+	linters       []linters.Linter
+	runner        linters.Runner
+	reporter      reporters.Reporter
+	exec          executors.Executor
+	client        github.Client
+	statusUpdater status.Updater
 }
 
 type githubGo struct {
-	pr *gh.PullRequest
+	pr           *gh.PullRequest
+	analysisGUID string
 
 	context *github.Context
 	githubGoConfig
@@ -71,7 +74,7 @@ func getLinterProcessors(ctx context.Context, patch string) []lp.Processor {
 	}
 }
 
-func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig) (*githubGo, error) {
+func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig, analysisGUID string) (*githubGo, error) {
 	if cfg.exec == nil {
 		exec, err := makeExecutor(c)
 		if err != nil {
@@ -110,9 +113,14 @@ func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig) (*g
 		}
 	}
 
+	if cfg.statusUpdater == nil {
+		cfg.statusUpdater = status.NewAPIUpdater()
+	}
+
 	return &githubGo{
 		context:        c,
 		githubGoConfig: cfg,
+		analysisGUID:   analysisGUID,
 	}, nil
 }
 
@@ -161,6 +169,11 @@ func (g githubGo) processInWorkDir(ctx context.Context) error {
 	statusDesc := "No issues found!"
 	defer func() {
 		g.setCommitStatus(ctx, status, statusDesc)
+
+		s := "processed/" + string(status)
+		if err := g.statusUpdater.UpdateStatus(ctx, g.analysisGUID, s); err != nil {
+			analytics.Log(ctx).Warnf("Can't set analysis %s status to '%s': %s", g.analysisGUID, s, err)
+		}
 	}()
 
 	if err := g.prepareRepo(ctx); err != nil {
@@ -211,6 +224,9 @@ func (g githubGo) Process(ctx context.Context) error {
 	}
 
 	g.setCommitStatus(ctx, github.StatusPending, "GolangCI is reviewing your Pull Request...")
+	if err = g.statusUpdater.UpdateStatus(ctx, g.analysisGUID, "processing"); err != nil {
+		analytics.Log(ctx).Warnf("Can't set analysis %s status to 'processing': %s", g.analysisGUID, err)
+	}
 
 	r := g.context.Repo
 	wd := path.Join(g.exec.WorkDir(), "src", "github.com", r.Owner, r.Name)

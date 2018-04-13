@@ -5,11 +5,10 @@ package linters
 
 import (
 	context "context"
-	reflect "reflect"
-
 	gomock "github.com/golang/mock/gomock"
 	executors "github.com/golangci/golangci-worker/app/analyze/executors"
 	result "github.com/golangci/golangci-worker/app/analyze/linters/result"
+	reflect "reflect"
 )
 
 // MockLinter is a mock of Linter interface

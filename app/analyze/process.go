@@ -16,10 +16,6 @@ import (
 
 var processorFactory = processors.NewGithubFactory()
 
-func SetProcessorFactory(f processors.Factory) {
-	processorFactory = f
-}
-
 func analyze(ctx context.Context, repoOwner, repoName, githubAccessToken string,
 	pullRequestNumber int, APIRequestID string, userID uint, analysisGUID string) error {
 

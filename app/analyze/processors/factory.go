@@ -20,7 +20,7 @@ func NewGithubFactory() Factory {
 }
 
 func (gf githubFactory) BuildProcessor(ctx context.Context, t *task.Task) (Processor, error) {
-	p, err := newGithubGo(ctx, &t.Context, githubGoConfig{})
+	p, err := newGithubGo(ctx, &t.Context, githubGoConfig{}, t.AnalysisGUID)
 	if err != nil {
 		if err == github.ErrPRNotFound {
 			analytics.Log(ctx).Warnf("No pull request to analyze, skip current task: use nop processor")

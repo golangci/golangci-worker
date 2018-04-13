@@ -8,6 +8,8 @@ gen:
 	mockgen -package fetchers -source ./app/analyze/fetchers/fetcher.go >./app/analyze/fetchers/fetcher_mock.go
 	mockgen -package reporters -source ./app/analyze/reporters/reporter.go >./app/analyze/reporters/reporter_mock.go
 	mockgen -package executors -source ./app/analyze/executors/executor.go >./app/analyze/executors/executor_mock.go
+	mockgen -package status -source ./app/analyze/status/updater.go >./app/analyze/status/updater_mock.go
+
 
 build:
 	go build ./app/cmd/...
