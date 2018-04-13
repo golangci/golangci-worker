@@ -103,6 +103,6 @@ func TestAnalyzeRepo(t *testing.T) {
 	}
 
 	err := analyzeLogged(context.Background(), repoOwner, repoName,
-		os.Getenv("TEST_GITHUB_TOKEN"), prNumber, "", userID)
+		os.Getenv("TEST_GITHUB_TOKEN"), prNumber, "", userID, "test-guid")
 	assert.NoError(t, err)
 }

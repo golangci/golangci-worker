@@ -20,7 +20,9 @@ func SetProcessorFactory(f processors.Factory) {
 	processorFactory = f
 }
 
-func analyze(ctx context.Context, repoOwner, repoName, githubAccessToken string, pullRequestNumber int, APIRequestID string, userID uint) error {
+func analyze(ctx context.Context, repoOwner, repoName, githubAccessToken string,
+	pullRequestNumber int, APIRequestID string, userID uint, analysisGUID string) error {
+
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
@@ -36,6 +38,7 @@ func analyze(ctx context.Context, repoOwner, repoName, githubAccessToken string,
 		},
 		APIRequestID: APIRequestID,
 		UserID:       userID,
+		AnalysisGUID: analysisGUID,
 	}
 
 	p, err := processorFactory.BuildProcessor(ctx, t)
@@ -57,26 +60,33 @@ func makeContext(ctx context.Context, trackingProps map[string]interface{}) cont
 }
 
 func analyzeWrapped(ctx context.Context, repoOwner, repoName, githubAccessToken string, pullRequestNumber int, APIRequestID string, userID uint) (err error) {
+	return analyzeWrappedV2(ctx, repoOwner, repoName, githubAccessToken, pullRequestNumber, APIRequestID, userID, "")
+}
+
+func analyzeWrappedV2(ctx context.Context, repoOwner, repoName, githubAccessToken string, pullRequestNumber int, APIRequestID string, userID uint, analysisGUID string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic recovered: %v", r)
 			logrus.Error(err)
 		}
 	}()
-	return analyzeLogged(ctx, repoOwner, repoName, githubAccessToken, pullRequestNumber, APIRequestID, userID)
+	return analyzeLogged(ctx, repoOwner, repoName, githubAccessToken, pullRequestNumber, APIRequestID, userID, analysisGUID)
 }
 
-func analyzeLogged(ctx context.Context, repoOwner, repoName, githubAccessToken string, pullRequestNumber int, APIRequestID string, userID uint) error {
+func analyzeLogged(ctx context.Context, repoOwner, repoName, githubAccessToken string,
+	pullRequestNumber int, APIRequestID string, userID uint, analysisGUID string) error {
+
 	trackingProps := map[string]interface{}{
 		"repoName":     fmt.Sprintf("%s/%s", repoOwner, repoName),
 		"provider":     "github",
 		"prNumber":     pullRequestNumber,
 		"userIDString": strconv.Itoa(int(userID)),
+		"analysisGUID": analysisGUID,
 	}
 	ctx = makeContext(ctx, trackingProps)
 
 	startedAt := time.Now()
-	err := analyze(ctx, repoOwner, repoName, githubAccessToken, pullRequestNumber, APIRequestID, userID)
+	err := analyze(ctx, repoOwner, repoName, githubAccessToken, pullRequestNumber, APIRequestID, userID, analysisGUID)
 
 	props := map[string]interface{}{
 		"durationSeconds": int(time.Since(startedAt) / time.Second),
@@ -102,7 +112,8 @@ func analyzeLogged(ctx context.Context, repoOwner, repoName, githubAccessToken s
 func RegisterTasks() {
 	server := queue.GetServer()
 	server.RegisterTasks(map[string]interface{}{
-		"analyze": analyzeWrapped,
+		"analyze":   analyzeWrapped,
+		"analyzeV2": analyzeWrappedV2,
 	})
 }
 

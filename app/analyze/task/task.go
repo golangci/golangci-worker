@@ -6,4 +6,5 @@ type Task struct {
 	github.Context
 	APIRequestID string
 	UserID       uint
+	AnalysisGUID string
 }

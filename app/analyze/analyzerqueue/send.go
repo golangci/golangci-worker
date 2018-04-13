@@ -9,34 +9,39 @@ import (
 )
 
 func Send(t *task.Task) error {
-	signature := &tasks.Signature{
-		Name: "analyze",
-		Args: []tasks.Arg{
-			{
-				Type:  "string",
-				Value: t.Repo.Owner,
-			},
-			{
-				Type:  "string",
-				Value: t.Repo.Name,
-			},
-			{
-				Type:  "string",
-				Value: t.GithubAccessToken,
-			},
-			{
-				Type:  "int",
-				Value: t.PullRequestNumber,
-			},
-			{
-				Type:  "string",
-				Value: t.APIRequestID,
-			},
-			{
-				Type:  "uint",
-				Value: t.UserID,
-			},
+	args := []tasks.Arg{
+		{
+			Type:  "string",
+			Value: t.Repo.Owner,
 		},
+		{
+			Type:  "string",
+			Value: t.Repo.Name,
+		},
+		{
+			Type:  "string",
+			Value: t.GithubAccessToken,
+		},
+		{
+			Type:  "int",
+			Value: t.PullRequestNumber,
+		},
+		{
+			Type:  "string",
+			Value: t.APIRequestID,
+		},
+		{
+			Type:  "uint",
+			Value: t.UserID,
+		},
+		{
+			Type:  "string",
+			Value: t.AnalysisGUID,
+		},
+	}
+	signature := &tasks.Signature{
+		Name:         "analyzeV2",
+		Args:         args,
 		RetryCount:   3,
 		RetryTimeout: 600, // 600 sec
 	}
