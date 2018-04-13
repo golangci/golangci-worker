@@ -99,13 +99,7 @@ func TestPathResolverCommonCases(t *testing.T) {
 		{
 			name:    "vendor is excluded",
 			prepare: []string{"vendor/"},
-			resolve: []string{"./"},
-			expDirs: []string{"."},
-		},
-		{
-			name:    "testdata is excluded",
-			prepare: []string{"testdata/"},
-			resolve: []string{"./"},
+			resolve: []string{"./..."},
 			expDirs: []string{"."},
 		},
 		{

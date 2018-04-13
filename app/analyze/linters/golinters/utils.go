@@ -35,7 +35,7 @@ func processPaths(root string, paths []string, maxPaths int) ([]string, error) {
 }
 
 func getPathsForGoProject(root string) (*ProjectPaths, error) {
-	excludeDirs := []string{"vendor", "testdata", "Godeps"}
+	excludeDirs := []string{"vendor", "testdata", "examples", "Godeps"}
 	pr := fsutils.NewPathResolver(excludeDirs, []string{".go"})
 	paths, err := pr.Resolve(path.Join(root, "..."))
 	if err != nil {
