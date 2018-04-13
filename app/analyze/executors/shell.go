@@ -109,7 +109,7 @@ func (s shell) Run(ctx context.Context, name string, args ...string) (string, er
 
 	logger := analytics.Log(ctx).Debugf
 	if err != nil {
-		logger = analytics.Log(ctx).Warnf
+		logger = analytics.Log(ctx).Infof
 	}
 	logger("shell[%s]: %s %v executed for %s: %v", s.wd, name, args, time.Since(startedAt), err)
 
