@@ -15,20 +15,20 @@ import (
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
 	lp "github.com/golangci/golangci-worker/app/analyze/linters/result/processors"
 	"github.com/golangci/golangci-worker/app/analyze/reporters"
-	"github.com/golangci/golangci-worker/app/analyze/status"
+	"github.com/golangci/golangci-worker/app/analyze/state"
 	"github.com/golangci/golangci-worker/app/utils/fsutils"
 	"github.com/golangci/golangci-worker/app/utils/github"
 	gh "github.com/google/go-github/github"
 )
 
 type githubGoConfig struct {
-	repoFetcher   fetchers.Fetcher
-	linters       []linters.Linter
-	runner        linters.Runner
-	reporter      reporters.Reporter
-	exec          executors.Executor
-	client        github.Client
-	statusUpdater status.Updater
+	repoFetcher fetchers.Fetcher
+	linters     []linters.Linter
+	runner      linters.Runner
+	reporter    reporters.Reporter
+	exec        executors.Executor
+	client      github.Client
+	state       state.Storage
 }
 
 type githubGo struct {
@@ -113,8 +113,8 @@ func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig, ana
 		}
 	}
 
-	if cfg.statusUpdater == nil {
-		cfg.statusUpdater = status.NewAPIUpdater()
+	if cfg.state == nil {
+		cfg.state = state.NewAPIStorage()
 	}
 
 	return &githubGo{
@@ -171,7 +171,7 @@ func (g githubGo) processInWorkDir(ctx context.Context) error {
 		g.setCommitStatus(ctx, status, statusDesc)
 
 		s := "processed/" + string(status)
-		if err := g.statusUpdater.UpdateStatus(ctx, g.analysisGUID, s); err != nil {
+		if err := g.state.UpdateStatus(ctx, g.analysisGUID, s); err != nil {
 			analytics.Log(ctx).Warnf("Can't set analysis %s status to '%s': %s", g.analysisGUID, s, err)
 		}
 	}()
@@ -224,8 +224,14 @@ func (g githubGo) Process(ctx context.Context) error {
 	}
 
 	g.setCommitStatus(ctx, github.StatusPending, "GolangCI is reviewing your Pull Request...")
-	if err = g.statusUpdater.UpdateStatus(ctx, g.analysisGUID, "processing"); err != nil {
-		analytics.Log(ctx).Warnf("Can't set analysis %s status to 'processing': %s", g.analysisGUID, err)
+	currentStatus, err := g.state.GetStatus(ctx, g.analysisGUID)
+	if err != nil {
+		analytics.Log(ctx).Warnf("Can't get current status: %s", err)
+	}
+	if currentStatus == "sent_to_queue" {
+		if err = g.state.UpdateStatus(ctx, g.analysisGUID, "processing"); err != nil {
+			analytics.Log(ctx).Warnf("Can't set analysis %s status to 'processing': %s", g.analysisGUID, err)
+		}
 	}
 
 	r := g.context.Repo

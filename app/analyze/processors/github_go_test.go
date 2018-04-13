@@ -18,7 +18,7 @@ import (
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
 	lp "github.com/golangci/golangci-worker/app/analyze/linters/result/processors"
 	"github.com/golangci/golangci-worker/app/analyze/reporters"
-	"github.com/golangci/golangci-worker/app/analyze/status"
+	"github.com/golangci/golangci-worker/app/analyze/state"
 	"github.com/golangci/golangci-worker/app/test"
 	"github.com/golangci/golangci-worker/app/utils/fsutils"
 	"github.com/golangci/golangci-worker/app/utils/github"
@@ -80,9 +80,10 @@ func getErroredReporter(ctrl *gomock.Controller) reporters.Reporter {
 	return r
 }
 
-func getNopStatusUpdater(ctrl *gomock.Controller) status.Updater {
-	r := status.NewMockUpdater(ctrl)
+func getNopState(ctrl *gomock.Controller) state.Storage {
+	r := state.NewMockStorage(ctrl)
 	r.EXPECT().UpdateStatus(any, any, any).AnyTimes().Return(nil)
+	r.EXPECT().GetStatus(any, any).AnyTimes().Return("sent_to_queue", nil)
 	return r
 }
 
@@ -161,8 +162,8 @@ func fillWithNops(ctrl *gomock.Controller, cfg *githubGoConfig) {
 	if cfg.reporter == nil {
 		cfg.reporter = getNopReporter(ctrl)
 	}
-	if cfg.statusUpdater == nil {
-		cfg.statusUpdater = getNopStatusUpdater(ctrl)
+	if cfg.state == nil {
+		cfg.state = getNopState(ctrl)
 	}
 }
 
