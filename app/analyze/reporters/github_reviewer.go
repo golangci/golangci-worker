@@ -3,6 +3,7 @@ package reporters
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
@@ -16,10 +17,15 @@ type GithubReviewer struct {
 }
 
 func NewGithubReviewer(c *github.Context, client github.Client) *GithubReviewer {
-	return &GithubReviewer{
+	ret := &GithubReviewer{
 		Context: c,
 		client:  client,
 	}
+	accessToken := os.Getenv("GITHUB_REVIEWER_ACCESS_TOKEN")
+	if accessToken != "" { // review as special user
+		ret.GithubAccessToken = accessToken
+	}
+	return ret
 }
 
 func (gr GithubReviewer) Report(ctx context.Context, ref string, issues []result.Issue) error {
