@@ -27,7 +27,7 @@ func newShell(workDir string) *shell {
 
 func trackMemoryEveryNSeconds(ctx context.Context, name string, pid int) {
 	rssValues := []uint64{}
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(100 * time.Millisecond)
 	for {
 		p, _ := process.NewProcess(int32(pid))
 		mi, err := p.MemoryInfoWithContext(ctx)
@@ -58,9 +58,13 @@ func trackMemoryEveryNSeconds(ctx context.Context, name string, pid int) {
 		}
 	}
 	avg /= uint64(len(rssValues))
+
 	const MB = 1024 * 1024
-	analytics.Log(ctx).Infof("Subprocess %q memory: got %d rss values, avg is %.1fMB, max is %.1fMB",
-		name, len(rssValues), float64(avg)/MB, float64(max)/MB)
+	maxMB := float64(max) / MB
+	if maxMB >= 1 {
+		analytics.Log(ctx).Infof("Subprocess %q memory: got %d rss values, avg is %.1fMB, max is %.1fMB",
+			name, len(rssValues), float64(avg)/MB, maxMB)
+	}
 }
 
 func (s shell) wait(ctx context.Context, name string, pid int, outReader io.ReadCloser) []string {
