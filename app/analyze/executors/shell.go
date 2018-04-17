@@ -32,7 +32,7 @@ func trackMemoryEveryNSeconds(ctx context.Context, name string, pid int) {
 		p, _ := process.NewProcess(int32(pid))
 		mi, err := p.MemoryInfoWithContext(ctx)
 		if err != nil {
-			analytics.Log(ctx).Warnf("Can't fetch memory info on subprocess: %s", err)
+			analytics.Log(ctx).Debugf("Can't fetch memory info on subprocess: %s", err)
 			return
 		}
 
