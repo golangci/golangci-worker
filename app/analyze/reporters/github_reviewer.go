@@ -17,13 +17,15 @@ type GithubReviewer struct {
 }
 
 func NewGithubReviewer(c *github.Context, client github.Client) *GithubReviewer {
+	accessToken := os.Getenv("GITHUB_REVIEWER_ACCESS_TOKEN")
+	if accessToken != "" { // review as special user
+		cCopy := *c
+		cCopy.GithubAccessToken = accessToken
+		c = &cCopy
+	}
 	ret := &GithubReviewer{
 		Context: c,
 		client:  client,
-	}
-	accessToken := os.Getenv("GITHUB_REVIEWER_ACCESS_TOKEN")
-	if accessToken != "" { // review as special user
-		ret.GithubAccessToken = accessToken
 	}
 	return ret
 }
