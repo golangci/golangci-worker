@@ -34,15 +34,11 @@ func getHTTPClient() *http.Client {
 }
 
 func (s APIStorage) getStatusURL(analysisID string) string {
-	return fmt.Sprintf("%s/v1/repos/repo/owner/analyzes/%s/status", s.Host, analysisID)
+	return fmt.Sprintf("%s/v1/repos/repo/owner/analyzes/%s/state", s.Host, analysisID)
 }
 
-type Status struct {
-	Status string
-}
-
-func (s APIStorage) UpdateStatus(ctx context.Context, analysisID, status string) error {
-	body, err := json.Marshal(Status{Status: status})
+func (s APIStorage) UpdateState(ctx context.Context, analysisID string, state *State) error {
+	body, err := json.Marshal(state)
 	if err != nil {
 		return fmt.Errorf("can't marshal payload json: %s", err)
 	}
@@ -68,29 +64,29 @@ func (s APIStorage) UpdateStatus(ctx context.Context, analysisID, status string)
 	return nil
 }
 
-func (s APIStorage) GetStatus(ctx context.Context, analysisID string) (string, error) {
+func (s APIStorage) GetState(ctx context.Context, analysisID string) (*State, error) {
 	req, err := http.NewRequest("GET", s.getStatusURL(analysisID), nil)
 	if err != nil {
-		return "", fmt.Errorf("can't build http request: %s", err)
+		return nil, fmt.Errorf("can't build http request: %s", err)
 	}
 	req = req.WithContext(ctx)
 
 	resp, err := getHTTPClient().Do(req)
 	if err != nil {
-		return "", fmt.Errorf("can't make http request: %s", err)
+		return nil, fmt.Errorf("can't make http request: %s", err)
 	}
 	if resp.Body != nil {
 		defer resp.Body.Close()
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("bad status code %d", resp.StatusCode)
+		return nil, fmt.Errorf("bad status code %d", resp.StatusCode)
 	}
 
-	var status Status
-	if err = json.NewDecoder(resp.Body).Decode(&status); err != nil {
-		return "", fmt.Errorf("can't read json body: %s", err)
+	var state State
+	if err = json.NewDecoder(resp.Body).Decode(&state); err != nil {
+		return nil, fmt.Errorf("can't read json body: %s", err)
 	}
 
-	return status.Status, nil
+	return &state, nil
 }

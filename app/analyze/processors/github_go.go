@@ -167,12 +167,16 @@ func (g githubGo) runLinters(ctx context.Context) ([]result.Issue, error) {
 func (g githubGo) processInWorkDir(ctx context.Context) error {
 	status := github.StatusSuccess // Hide all out internal errors
 	statusDesc := "No issues found!"
+	var issues []result.Issue
 	defer func() {
 		g.setCommitStatus(ctx, status, statusDesc)
 
-		s := "processed/" + string(status)
-		if err := g.state.UpdateStatus(ctx, g.analysisGUID, s); err != nil {
-			analytics.Log(ctx).Warnf("Can't set analysis %s status to '%s': %s", g.analysisGUID, s, err)
+		s := &state.State{
+			Status:              "processed/" + string(status),
+			ReportedIssuesCount: len(issues),
+		}
+		if err := g.state.UpdateState(ctx, g.analysisGUID, s); err != nil {
+			analytics.Log(ctx).Warnf("Can't set analysis %s status to '%v': %s", g.analysisGUID, s, err)
 		}
 	}()
 
@@ -180,7 +184,8 @@ func (g githubGo) processInWorkDir(ctx context.Context) error {
 		return err
 	}
 
-	issues, err := g.runLinters(ctx)
+	var err error
+	issues, err = g.runLinters(ctx)
 	if err != nil {
 		return err
 	}
@@ -224,13 +229,13 @@ func (g githubGo) Process(ctx context.Context) error {
 	}
 
 	g.setCommitStatus(ctx, github.StatusPending, "GolangCI is reviewing your Pull Request...")
-	currentStatus, err := g.state.GetStatus(ctx, g.analysisGUID)
+	curState, err := g.state.GetState(ctx, g.analysisGUID)
 	if err != nil {
-		analytics.Log(ctx).Warnf("Can't get current status: %s", err)
-	}
-	if currentStatus == "sent_to_queue" {
-		if err = g.state.UpdateStatus(ctx, g.analysisGUID, "processing"); err != nil {
-			analytics.Log(ctx).Warnf("Can't set analysis %s status to 'processing': %s", g.analysisGUID, err)
+		analytics.Log(ctx).Warnf("Can't get current state: %s", err)
+	} else if curState.Status == "sent_to_queue" {
+		curState.Status = "processing"
+		if err = g.state.UpdateState(ctx, g.analysisGUID, curState); err != nil {
+			analytics.Log(ctx).Warnf("Can't update analysis %s state with setting status to 'processing': %s", g.analysisGUID, err)
 		}
 	}
 

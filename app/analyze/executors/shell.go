@@ -61,7 +61,7 @@ func trackMemoryEveryNSeconds(ctx context.Context, name string, pid int) {
 
 	const MB = 1024 * 1024
 	maxMB := float64(max) / MB
-	if maxMB >= 1 {
+	if maxMB >= 10 {
 		analytics.Log(ctx).Infof("Subprocess %q memory: got %d rss values, avg is %.1fMB, max is %.1fMB",
 			name, len(rssValues), float64(avg)/MB, maxMB)
 	}
