@@ -4,7 +4,12 @@ import (
 	"context"
 )
 
+type State struct {
+	Status              string
+	ReportedIssuesCount int
+}
+
 type Storage interface {
-	UpdateStatus(ctx context.Context, analysisID, status string) error
-	GetStatus(ctx context.Context, analysisID string) (string, error)
+	UpdateState(ctx context.Context, analysisID string, state *State) error
+	GetState(ctx context.Context, analysisID string) (*State, error)
 }

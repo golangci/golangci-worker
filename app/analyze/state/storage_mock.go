@@ -32,27 +32,27 @@ func (_m *MockStorage) EXPECT() *MockStorageMockRecorder {
 	return _m.recorder
 }
 
-// UpdateStatus mocks base method
-func (_m *MockStorage) UpdateStatus(ctx context.Context, analysisID string, status string) error {
-	ret := _m.ctrl.Call(_m, "UpdateStatus", ctx, analysisID, status)
+// UpdateState mocks base method
+func (_m *MockStorage) UpdateState(ctx context.Context, analysisID string, state *State) error {
+	ret := _m.ctrl.Call(_m, "UpdateState", ctx, analysisID, state)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// UpdateStatus indicates an expected call of UpdateStatus
-func (_mr *MockStorageMockRecorder) UpdateStatus(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "UpdateStatus", reflect.TypeOf((*MockStorage)(nil).UpdateStatus), arg0, arg1, arg2)
+// UpdateState indicates an expected call of UpdateState
+func (_mr *MockStorageMockRecorder) UpdateState(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "UpdateState", reflect.TypeOf((*MockStorage)(nil).UpdateState), arg0, arg1, arg2)
 }
 
-// GetStatus mocks base method
-func (_m *MockStorage) GetStatus(ctx context.Context, analysisID string) (string, error) {
-	ret := _m.ctrl.Call(_m, "GetStatus", ctx, analysisID)
-	ret0, _ := ret[0].(string)
+// GetState mocks base method
+func (_m *MockStorage) GetState(ctx context.Context, analysisID string) (*State, error) {
+	ret := _m.ctrl.Call(_m, "GetState", ctx, analysisID)
+	ret0, _ := ret[0].(*State)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetStatus indicates an expected call of GetStatus
-func (_mr *MockStorageMockRecorder) GetStatus(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "GetStatus", reflect.TypeOf((*MockStorage)(nil).GetStatus), arg0, arg1)
+// GetState indicates an expected call of GetState
+func (_mr *MockStorageMockRecorder) GetState(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "GetState", reflect.TypeOf((*MockStorage)(nil).GetState), arg0, arg1)
 }

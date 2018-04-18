@@ -82,8 +82,10 @@ func getErroredReporter(ctrl *gomock.Controller) reporters.Reporter {
 
 func getNopState(ctrl *gomock.Controller) state.Storage {
 	r := state.NewMockStorage(ctrl)
-	r.EXPECT().UpdateStatus(any, any, any).AnyTimes().Return(nil)
-	r.EXPECT().GetStatus(any, any).AnyTimes().Return("sent_to_queue", nil)
+	r.EXPECT().UpdateState(any, any, any).AnyTimes().Return(nil)
+	r.EXPECT().GetState(any, any).AnyTimes().Return(&state.State{
+		Status: "sent_to_queue",
+	}, nil)
 	return r
 }
 
@@ -192,6 +194,7 @@ func getGithubProcessorWithIssues(t *testing.T, ctrl *gomock.Controller,
 		reporter:    getFakeReporter(ctrl, expIssues...),
 		exec:        getFakeExecutor(ctrl),
 		client:      getNopGithubClient(ctrl),
+		state:       getNopState(ctrl),
 	}
 
 	p, err := newGithubGo(testCtx, &github.FakeContext, cfg, testAnalysisGUID)
@@ -278,6 +281,8 @@ func TestSetCommitStatusSuccessOnError(t *testing.T) {
 }
 
 func TestProcessorTimeout(t *testing.T) {
+	test.Init()
+
 	startedAt := time.Now()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
