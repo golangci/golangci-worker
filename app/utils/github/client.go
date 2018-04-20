@@ -55,7 +55,7 @@ func (gc *MyClient) CreateReview(ctx context.Context, c *Context, review *gh.Pul
 }
 
 func (gc *MyClient) GetPullRequestPatch(ctx context.Context, c *Context) (string, error) {
-	opts := gh.RawOptions{Type: gh.Patch}
+	opts := gh.RawOptions{Type: gh.Diff}
 	raw, _, err := c.GetClient(ctx).PullRequests.GetRaw(ctx, c.Repo.Owner, c.Repo.Name,
 		c.PullRequestNumber, opts)
 	if err != nil {
