@@ -12,6 +12,11 @@ import (
 type Status string
 
 var ErrPRNotFound = errors.New("no such pull request")
+var ErrUnauthorized = errors.New("invalid authorization")
+
+func IsRecoverableError(err error) bool {
+	return err != ErrPRNotFound && err != ErrUnauthorized
+}
 
 const (
 	StatusPending Status = "pending"
@@ -35,10 +40,27 @@ func NewMyClient() *MyClient {
 	return &MyClient{}
 }
 
+func transformGithubError(err error) error {
+	if er, ok := err.(*gh.ErrorResponse); ok {
+		if er.Response.StatusCode == http.StatusNotFound {
+			return ErrPRNotFound
+		}
+		if er.Response.StatusCode == http.StatusUnauthorized {
+			return ErrUnauthorized
+		}
+	}
+
+	return nil
+}
+
 func (gc *MyClient) GetPullRequest(ctx context.Context, c *Context) (*gh.PullRequest, error) {
 	ghClient := c.GetClient(ctx)
 	pr, _, err := ghClient.PullRequests.Get(ctx, c.Repo.Owner, c.Repo.Name, c.PullRequestNumber)
 	if err != nil {
+		if terr := transformGithubError(err); terr != nil {
+			return nil, terr
+		}
+
 		return nil, fmt.Errorf("can't get pull request %d from github: %s", c.PullRequestNumber, err)
 	}
 
@@ -48,6 +70,10 @@ func (gc *MyClient) GetPullRequest(ctx context.Context, c *Context) (*gh.PullReq
 func (gc *MyClient) CreateReview(ctx context.Context, c *Context, review *gh.PullRequestReviewRequest) error {
 	_, _, err := c.GetClient(ctx).PullRequests.CreateReview(ctx, c.Repo.Owner, c.Repo.Name, c.PullRequestNumber, review)
 	if err != nil {
+		if terr := transformGithubError(err); terr != nil {
+			return terr
+		}
+
 		return fmt.Errorf("can't create github review: %s", err)
 	}
 
@@ -59,11 +85,10 @@ func (gc *MyClient) GetPullRequestPatch(ctx context.Context, c *Context) (string
 	raw, _, err := c.GetClient(ctx).PullRequests.GetRaw(ctx, c.Repo.Owner, c.Repo.Name,
 		c.PullRequestNumber, opts)
 	if err != nil {
-		if er, ok := err.(*gh.ErrorResponse); ok {
-			if er.Response.StatusCode == http.StatusNotFound {
-				return "", ErrPRNotFound
-			}
+		if terr := transformGithubError(err); terr != nil {
+			return "", terr
 		}
+
 		return "", fmt.Errorf("can't get patch for pull request: %s", err)
 	}
 
@@ -78,6 +103,10 @@ func (gc *MyClient) SetCommitStatus(ctx context.Context, c *Context, ref string,
 	}
 	_, _, err := c.GetClient(ctx).Repositories.CreateStatus(ctx, c.Repo.Owner, c.Repo.Name, ref, rs)
 	if err != nil {
+		if terr := transformGithubError(err); terr != nil {
+			return terr
+		}
+
 		return fmt.Errorf("can't set commit %s status %s: %s", ref, status, err)
 	}
 
