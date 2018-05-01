@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
+	"github.com/cenkalti/backoff"
 	gh "github.com/google/go-github/github"
 	"github.com/sirupsen/logrus"
 )
@@ -56,10 +58,34 @@ func transformGithubError(err error) error {
 	return nil
 }
 
+func retryGet(f func() error) error {
+	b := backoff.NewExponentialBackOff()
+	b.MaxElapsedTime = 2 * time.Minute
+
+	bmr := backoff.WithMaxRetries(b, 5)
+
+	if err := backoff.Retry(f, bmr); err != nil {
+		logrus.Warnf("Github operation failed to retry with %v and took %s: %s", b, b.GetElapsedTime(), err)
+		return err
+	}
+
+	return nil
+}
+
 func (gc *MyClient) GetPullRequest(ctx context.Context, c *Context) (*gh.PullRequest, error) {
-	ghClient := c.GetClient(ctx)
-	pr, _, err := ghClient.PullRequests.Get(ctx, c.Repo.Owner, c.Repo.Name, c.PullRequestNumber)
-	if err != nil {
+	var retPR *gh.PullRequest
+
+	f := func() error {
+		pr, _, err := c.GetClient(ctx).PullRequests.Get(ctx, c.Repo.Owner, c.Repo.Name, c.PullRequestNumber)
+		if err != nil {
+			return err
+		}
+
+		retPR = pr
+		return nil
+	}
+
+	if err := retryGet(f); err != nil {
 		if terr := transformGithubError(err); terr != nil {
 			return nil, terr
 		}
@@ -67,7 +93,7 @@ func (gc *MyClient) GetPullRequest(ctx context.Context, c *Context) (*gh.PullReq
 		return nil, fmt.Errorf("can't get pull request %d from github: %s", c.PullRequestNumber, err)
 	}
 
-	return pr, nil
+	return retPR, nil
 }
 
 func (gc *MyClient) CreateReview(ctx context.Context, c *Context, review *gh.PullRequestReviewRequest) error {
@@ -84,10 +110,21 @@ func (gc *MyClient) CreateReview(ctx context.Context, c *Context, review *gh.Pul
 }
 
 func (gc *MyClient) GetPullRequestPatch(ctx context.Context, c *Context) (string, error) {
-	opts := gh.RawOptions{Type: gh.Diff}
-	raw, _, err := c.GetClient(ctx).PullRequests.GetRaw(ctx, c.Repo.Owner, c.Repo.Name,
-		c.PullRequestNumber, opts)
-	if err != nil {
+	var ret string
+
+	f := func() error {
+		opts := gh.RawOptions{Type: gh.Diff}
+		raw, _, err := c.GetClient(ctx).PullRequests.GetRaw(ctx, c.Repo.Owner, c.Repo.Name,
+			c.PullRequestNumber, opts)
+		if err != nil {
+			return err
+		}
+
+		ret = raw
+		return nil
+	}
+
+	if err := retryGet(f); err != nil {
 		if terr := transformGithubError(err); terr != nil {
 			return "", terr
 		}
@@ -95,7 +132,7 @@ func (gc *MyClient) GetPullRequestPatch(ctx context.Context, c *Context) (string
 		return "", fmt.Errorf("can't get patch for pull request: %s", err)
 	}
 
-	return raw, nil
+	return ret, nil
 }
 
 func (gc *MyClient) SetCommitStatus(ctx context.Context, c *Context, ref string, status Status, desc string) error {
