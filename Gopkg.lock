@@ -73,6 +73,12 @@
   revision = "c04006dc3307c8768bda7a33c7c15d1c6f664e14"
 
 [[projects]]
+  name = "github.com/cenkalti/backoff"
+  packages = ["."]
+  revision = "2ea60e5f094469f9e65adb9cd103795b73ae743e"
+  version = "v2.0.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -182,7 +188,6 @@
 [[projects]]
   name = "github.com/shirou/gopsutil"
   packages = [
-    ".",
     "cpu",
     "host",
     "internal/common",
@@ -327,6 +332,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4d0a5ef8809bfdaaed5fe3d3d2e859e04f98e58b6a8a9a80ec9d8c4bffe36b8e"
+  inputs-digest = "da9106a51ffe932aa93721b105be83e8db2dbdc12327c51432f2a69ee64fe24e"
   solver-name = "gps-cdcl"
   solver-version = 1
