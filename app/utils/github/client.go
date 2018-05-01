@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	gh "github.com/google/go-github/github"
+	"github.com/sirupsen/logrus"
 )
 
 type Status string
@@ -43,9 +44,11 @@ func NewMyClient() *MyClient {
 func transformGithubError(err error) error {
 	if er, ok := err.(*gh.ErrorResponse); ok {
 		if er.Response.StatusCode == http.StatusNotFound {
+			logrus.Warnf("Got 404 from github: %+v", er)
 			return ErrPRNotFound
 		}
 		if er.Response.StatusCode == http.StatusUnauthorized {
+			logrus.Warnf("Got 401 from github: %+v", er)
 			return ErrUnauthorized
 		}
 	}
