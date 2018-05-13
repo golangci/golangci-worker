@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime/debug"
+	"log"
 	"strconv"
 	"time"
 
@@ -108,10 +109,13 @@ func analyzeLogged(ctx context.Context, repoOwner, repoName, githubAccessToken s
 
 func RegisterTasks() {
 	server := queue.GetServer()
-	server.RegisterTasks(map[string]interface{}{
+	err := server.RegisterTasks(map[string]interface{}{
 		"analyze":   analyzeWrapped,
 		"analyzeV2": analyzeWrappedV2,
 	})
+	if err != nil {
+		log.Fatalf("Can't register queue tasks: %s", err)
+	}
 }
 
 func RunWorker() error {

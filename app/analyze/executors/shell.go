@@ -67,7 +67,7 @@ func trackMemoryEveryNSeconds(ctx context.Context, name string, pid int) {
 	}
 }
 
-func (s shell) wait(ctx context.Context, name string, childPid int, outReader io.ReadCloser) []string {
+func (s shell) wait(ctx context.Context, name string, childPid int, outReader io.Reader) []string {
 	trackCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go trackMemoryEveryNSeconds(trackCtx, name, childPid)

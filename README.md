@@ -2,7 +2,7 @@
 [![GolangCI](https://golangci.com/badges/github.com/golangci/golangci-worker.svg)](https://golangci.com)
 
 # Worker
-This repository contains code of queue worker. Worker runs code analysis and reports result to GitHub.
+This repository contains code of queue worker. Worker runs golangci-lint and reports result to GitHub.
 
 # How to run
 ```bash
