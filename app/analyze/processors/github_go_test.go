@@ -17,7 +17,6 @@ import (
 	"github.com/golangci/golangci-worker/app/analyze/fetchers"
 	"github.com/golangci/golangci-worker/app/analyze/linters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
-	lp "github.com/golangci/golangci-worker/app/analyze/linters/result/processors"
 	"github.com/golangci/golangci-worker/app/analyze/reporters"
 	"github.com/golangci/golangci-worker/app/analyze/state"
 	"github.com/golangci/golangci-worker/app/test"
@@ -186,59 +185,6 @@ func testProcessor(t *testing.T, ctrl *gomock.Controller, cfg githubGoConfig) {
 	assert.NoError(t, err)
 }
 
-func getGithubProcessorWithIssues(t *testing.T, ctrl *gomock.Controller,
-	issues, expIssues []result.Issue) *githubGo {
-
-	cfg := githubGoConfig{
-		linters:     getFakeLinters(ctrl, issues...),
-		repoFetcher: getNopFetcher(ctrl),
-		reporter:    getFakeReporter(ctrl, expIssues...),
-		exec:        getFakeExecutor(ctrl),
-		client:      getNopGithubClient(ctrl),
-		state:       getNopState(ctrl),
-	}
-
-	p, err := newGithubGo(testCtx, &github.FakeContext, cfg, testAnalysisGUID)
-	assert.NoError(t, err)
-	return p
-}
-
-func TestNewIssuesFiltering(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	issues := []result.Issue{
-		result.NewIssue("linter1", "F0 issue", "main.go", 6, 0), // must be filtered out because not changed
-		fakeChangedIssue,
-	}
-	p := getGithubProcessorWithIssues(t, ctrl, issues, issues[1:])
-	assert.NoError(t, p.Process(testCtx))
-}
-
-func TestOnlyOneIssuePerLine(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	issues := []result.Issue{
-		result.NewIssue("linter1", "F1 issue", "main.go", 10, 11),
-		result.NewIssue("linter2", "F1 another issue", "main.go", 10, 11),
-	}
-	p := getGithubProcessorWithIssues(t, ctrl, issues, issues[:1])
-	assert.NoError(t, p.Process(testCtx))
-}
-
-func TestExcludeGolintCommentsIssues(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	issues := []result.Issue{
-		result.NewIssue("golint", "exported function SetProcessorFactory should have comment or be unexported", "main.go", 1, 1),
-		result.NewIssue("golint", "exported const StatusPending should have comment (or a comment on this block) or be unexported", "main.go", 10, 11),
-	}
-	p := getGithubProcessorWithIssues(t, ctrl, issues, []result.Issue{})
-	assert.NoError(t, p.Process(testCtx))
-}
-
 func TestSetCommitStatusSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -296,10 +242,12 @@ func getRealisticTestProcessor(ctx context.Context, t *testing.T, ctrl *gomock.C
 	gc.EXPECT().GetPullRequest(testCtxMatcher, c).Return(pr, nil)
 	gc.EXPECT().SetCommitStatus(any, any, any, any, any).AnyTimes()
 
+	exec, err := executors.NewTempDirShell("gopath")
+	assert.NoError(t, err)
+
 	cfg := githubGoConfig{
-		runner: linters.SimpleRunner{
-			Processors: getLinterProcessorsExceptDiff(),
-		},
+		exec:     exec,
+		runner:   linters.SimpleRunner{},
 		reporter: getNopReporter(ctrl),
 		client:   gc,
 	}
@@ -323,17 +271,6 @@ func TestProcessorTimeout(t *testing.T) {
 
 	assert.Error(t, p.Process(ctx))
 	assert.True(t, time.Since(startedAt) < 300*time.Millisecond)
-}
-
-func getLinterProcessorsExceptDiff() []lp.Processor {
-	ret := []lp.Processor{}
-	dp := lp.NewDiffProcessor("")
-	for _, p := range getLinterProcessors(testCtx, "") {
-		if p.Name() != dp.Name() {
-			ret = append(ret, p)
-		}
-	}
-	return ret
 }
 
 func getTestingRepo(t *testing.T) *github.Context {
@@ -374,7 +311,7 @@ func getTestProcessorWithFakeGithub(ctx context.Context, t *testing.T, ctrl *gom
 	assert.NoError(t, err)
 
 	gc := github.NewMockClient(ctrl)
-	gc.EXPECT().GetPullRequestPatch(any, any).Return(patch, nil)
+	gc.EXPECT().GetPullRequestPatch(any, any).AnyTimes().Return(patch, nil)
 	gc.EXPECT().GetPullRequest(testCtxMatcher, c).Return(pr, nil)
 	gc.EXPECT().SetCommitStatus(any, any, any, any, any).AnyTimes()
 

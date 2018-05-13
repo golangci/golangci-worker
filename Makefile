@@ -21,9 +21,9 @@ test:
 	go test -v ./...
 
 test_repo:
-	# set envs var PR, REPO
+	# set env vars PR, REPO
 	SLOW_TESTS_ENABLED=1 go test -v ./app/analyze -run TestAnalyzeRepo
 
 test_repo_fake_github:
-	# set env vars BRANCH=master and REPO=owner/name
-	SLOW_TESTS_ENABLED=1 go test -v ./app/analyze/processors -run TestProcessRepoWithFakeGithub
+	# set env vars PR, REPO
+	SLOW_TESTS_ENABLED=1 go test -v ./app/analyze/processors -count=1 -run TestProcessRepoWithFakeGithub

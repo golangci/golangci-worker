@@ -3,6 +3,7 @@ package processors
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 
@@ -16,7 +17,6 @@ import (
 	lp "github.com/golangci/golangci-worker/app/analyze/linters/result/processors"
 	"github.com/golangci/golangci-worker/app/analyze/reporters"
 	"github.com/golangci/golangci-worker/app/analyze/state"
-	"github.com/golangci/golangci-worker/app/utils/fsutils"
 	"github.com/golangci/golangci-worker/app/utils/github"
 	gh "github.com/google/go-github/github"
 )
@@ -58,25 +58,19 @@ func (ap analyticsProcessor) Name() string {
 }
 
 func getLinterProcessors(ctx context.Context, patch string) []lp.Processor {
-	return []lp.Processor{
-		lp.NewExcludeProcessor(`(should have comment|comment on exported method)`),
-		lp.UniqByLineProcessor{},
-		analyticsProcessor{
-			key: "totalIssues",
-			ctx: ctx,
-		},
-		lp.NewDiffProcessor(patch),
-		lp.MaxLinterIssuesPerFile{},
-		analyticsProcessor{
-			key: "reportedIssues",
-			ctx: ctx,
-		},
-	}
+	return []lp.Processor{}
 }
 
 func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig, analysisGUID string) (*githubGo, error) {
 	if cfg.exec == nil {
-		exec, err := makeExecutor(c)
+		patch, err := cfg.client.GetPullRequestPatch(ctx, c)
+		if err != nil {
+			if !github.IsRecoverableError(err) {
+				return nil, err // preserve error
+			}
+			return nil, fmt.Errorf("can't get patch: %s", err)
+		}
+		exec, err := makeExecutor(ctx, c, patch)
 		if err != nil {
 			return nil, err
 		}
@@ -124,16 +118,46 @@ func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig, ana
 	}, nil
 }
 
-func makeExecutor(c *github.Context) (executors.Executor, error) {
+func makeExecutor(ctx context.Context, c *github.Context, patch string) (executors.Executor, error) {
 	repo := c.Repo
-	exec, err := executors.NewTempDirShell("gopath")
-	if err != nil {
-		return nil, fmt.Errorf("can't create temp dir shell: %s", err)
+	var exec executors.Executor
+	const useRemoteShell = true
+	if useRemoteShell {
+		s := executors.NewRemoteShell(
+			os.Getenv("REMOTE_SHELL_USER"),
+			os.Getenv("REMOTE_SHELL_HOST"),
+			os.Getenv("REMOTE_SHELL_KEY_FILE_PATH"),
+		)
+		if err := s.SetupTempWorkDir(ctx); err != nil {
+			return nil, fmt.Errorf("can't setup temp work dir: %s", err)
+		}
+
+		f, err := ioutil.TempFile("/tmp", "golangci.diff")
+		defer os.Remove(f.Name())
+
+		if err != nil {
+			return nil, fmt.Errorf("can't create temp file for patch: %s", err)
+		}
+		if err = ioutil.WriteFile(f.Name(), []byte(patch), os.ModePerm); err != nil {
+			return nil, fmt.Errorf("can't write patch to temp file %s: %s", f.Name(), err)
+		}
+
+		if err = s.CopyFile(ctx, "changes.patch", f.Name()); err != nil {
+			return nil, fmt.Errorf("can't copy patch file to remote shell: %s", err)
+		}
+
+		exec = s
+	} else {
+		var err error
+		exec, err = executors.NewTempDirShell("gopath")
+		if err != nil {
+			return nil, fmt.Errorf("can't create temp dir shell: %s", err)
+		}
 	}
 
 	gopath := exec.WorkDir()
 	wd := path.Join(gopath, "src", "github.com", repo.Owner, repo.Name)
-	if err := os.MkdirAll(wd, os.ModePerm); err != nil {
+	if _, err := exec.Run(ctx, "mkdir", "-p", wd); err != nil {
 		return nil, fmt.Errorf("can't create project dir %q: %s", wd, err)
 	}
 
@@ -144,15 +168,14 @@ func makeExecutor(c *github.Context) (executors.Executor, error) {
 }
 
 func (g githubGo) prepareRepo(ctx context.Context) error {
-	cloneURL := g.pr.GetHead().GetRepo().GetSSHURL()
-	clonePath := "." // Must be already in needed dir
+	cloneURL := g.pr.GetHead().GetRepo().GetCloneURL() // TODO: get ssh url when need to clone private repo
+	clonePath := "."                                   // Must be already in needed dir
 	ref := g.pr.GetHead().GetRef()
 	if err := g.repoFetcher.Fetch(ctx, cloneURL, ref, clonePath, g.exec); err != nil {
 		return fmt.Errorf("can't fetch git repo: %s", err)
 	}
 
-	projRoot := fsutils.GetProjectRoot()
-	depsPath := path.Join(projRoot, "app", "scripts", "ensure_deps.sh")
+	depsPath := path.Join("/app", "ensure_deps.sh")
 	if out, err := g.exec.Run(ctx, "bash", depsPath); err != nil {
 		analytics.Log(ctx).Warnf("Can't ensure deps: %s, %s", err, out)
 	}

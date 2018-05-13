@@ -5,3 +5,4 @@
 /gometalinter_bin
 /bin
 /*.log
+/logs/

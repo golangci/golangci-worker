@@ -13,7 +13,7 @@ import (
 func TestGitOnTestRepo(t *testing.T) {
 	g := Git{}
 	ref := "test-branch"
-	cloneURL := "https://github.com/golangci/test.git"
+	cloneURL := "git@github.com:golangci/test.git"
 
 	exec, err := executors.NewTempDirShell("test.git")
 	assert.NoError(t, err)
