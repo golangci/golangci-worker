@@ -62,6 +62,10 @@ func getLinterProcessors(ctx context.Context, patch string) []lp.Processor {
 }
 
 func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig, analysisGUID string) (*githubGo, error) {
+	if cfg.client == nil {
+		cfg.client = github.NewMyClient()
+	}
+
 	if cfg.exec == nil {
 		patch, err := cfg.client.GetPullRequestPatch(ctx, c)
 		if err != nil {
@@ -70,6 +74,7 @@ func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig, ana
 			}
 			return nil, fmt.Errorf("can't get patch: %s", err)
 		}
+
 		exec, err := makeExecutor(ctx, c, patch)
 		if err != nil {
 			return nil, err
@@ -83,10 +88,6 @@ func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig, ana
 
 	if cfg.linters == nil {
 		cfg.linters = golinters.GetSupportedLinters()
-	}
-
-	if cfg.client == nil {
-		cfg.client = github.NewMyClient()
 	}
 
 	if cfg.reporter == nil {

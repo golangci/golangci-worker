@@ -4,7 +4,8 @@ set -e
 
 mkdir -p .ssh
 ssh-keyscan -H github.com >>.ssh/known_hosts
-echo added github.com to known hosts
+ssh-keyscan -H $(cat $ENV_DIR/REMOTE_SHELL_HOST) >>.ssh/known_hosts
+echo added github.com and remote shell to known hosts
 
 echo "i am in $(pwd)"
 echo "ENV_DIR is $ENV_DIR"

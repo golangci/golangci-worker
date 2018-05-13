@@ -3,6 +3,7 @@ package analyze
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"strconv"
 	"time"
 
@@ -62,7 +63,7 @@ func analyzeWrapped(ctx context.Context, repoOwner, repoName, githubAccessToken 
 func analyzeWrappedV2(ctx context.Context, repoOwner, repoName, githubAccessToken string, pullRequestNumber int, APIRequestID string, userID uint, analysisGUID string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("panic recovered: %v", r)
+			err = fmt.Errorf("panic recovered: %v, %s", r, debug.Stack())
 			logrus.Error(err)
 		}
 	}()
