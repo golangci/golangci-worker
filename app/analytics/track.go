@@ -37,19 +37,25 @@ func (t amplitudeMixpanelTracker) Track(ctx context.Context, eventName EventName
 
 	ac := getAmplitudeClient()
 	if ac != nil {
-		ac.Publish(amplitude.Event{
+		ev := amplitude.Event{
 			UserId:          userID,
 			EventType:       string(eventName),
 			EventProperties: eventProps,
-		})
+		}
+		if err := ac.Publish(ev); err != nil {
+			Log(ctx).Warnf("Can't publish %+v to amplitude: %s", ev, err)
+		}
 	}
 
 	mp := getMixpanelClient()
 	if mp != nil {
 		const ip = "0" // don't auto-detect
-		mp.Track(userID, string(eventName), &mixpanel.Event{
+		ev := &mixpanel.Event{
 			IP:         ip,
 			Properties: eventProps,
-		})
+		}
+		if err := mp.Track(userID, string(eventName), ev); err != nil {
+			Log(ctx).Warnf("Can't publish event %s (%+v) to mixpanel: %s", string(eventName), ev, err)
+		}
 	}
 }

@@ -14,7 +14,7 @@ import (
 	"github.com/golangci/golangci-worker/app/analyze/linters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/golinters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
-	lp "github.com/golangci/golangci-worker/app/analyze/linters/result/processors"
+	"github.com/golangci/golangci-worker/app/analyze/linters/result/processors"
 	"github.com/golangci/golangci-worker/app/analyze/reporters"
 	"github.com/golangci/golangci-worker/app/analyze/state"
 	"github.com/golangci/golangci-worker/app/utils/github"
@@ -37,28 +37,6 @@ type githubGo struct {
 
 	context *github.Context
 	githubGoConfig
-}
-
-type analyticsProcessor struct {
-	key string
-	ctx context.Context
-}
-
-func (ap analyticsProcessor) Process(results []result.Result) ([]result.Result, error) {
-	issuesCount := 0
-	for _, r := range results {
-		issuesCount += len(r.Issues)
-	}
-	analytics.SaveEventProp(ap.ctx, analytics.EventPRChecked, ap.key, issuesCount)
-	return results, nil
-}
-
-func (ap analyticsProcessor) Name() string {
-	return fmt.Sprintf("analytics processor <%s>", ap.key)
-}
-
-func getLinterProcessors(ctx context.Context, patch string) []lp.Processor {
-	return []lp.Processor{}
 }
 
 func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig, analysisGUID string) (*githubGo, error) {
@@ -95,16 +73,8 @@ func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig, ana
 	}
 
 	if cfg.runner == nil {
-		patch, err := cfg.client.GetPullRequestPatch(ctx, c)
-		if err != nil {
-			if !github.IsRecoverableError(err) {
-				return nil, err // preserve error
-			}
-			return nil, fmt.Errorf("can't get patch: %s", err)
-		}
-
 		cfg.runner = linters.SimpleRunner{
-			Processors: getLinterProcessors(ctx, patch),
+			Processors: []processors.Processor{},
 		}
 	}
 
@@ -213,6 +183,8 @@ func (g githubGo) processInWorkDir(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	analytics.SaveEventProp(ctx, analytics.EventPRChecked, "reportedIssues", len(issues))
 
 	if len(issues) == 0 {
 		analytics.Log(ctx).Infof("Linters found no issues")
