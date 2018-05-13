@@ -31,10 +31,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/bradleyfalzon/revgrep"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/golang/mock"
 
 [[constraint]]
@@ -69,10 +65,6 @@
   root-package = "github.com/golangci/golangci-worker"
   go-version = "go1.9"
   install = [ "./app/cmd/..." ]
-
-[[constraint]]
-  branch = "master"
-  name = "sourcegraph.com/sourcegraph/go-diff"
 
 [[constraint]]
   name = "github.com/shirou/gopsutil"

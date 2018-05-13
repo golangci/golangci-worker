@@ -67,12 +67,6 @@
   revision = "1952afaa557dc08e8e0d89eafab110fb501c1a2b"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/bradleyfalzon/revgrep"
-  packages = ["."]
-  revision = "c04006dc3307c8768bda7a33c7c15d1c6f664e14"
-
-[[projects]]
   name = "github.com/cenkalti/backoff"
   packages = ["."]
   revision = "2ea60e5f094469f9e65adb9cd103795b73ae743e"
@@ -115,12 +109,6 @@
   version = "v1.2.1"
 
 [[projects]]
-  name = "github.com/gogo/protobuf"
-  packages = ["proto"]
-  revision = "1adfc126b41513cc696b209667c8656ea7aac67c"
-  version = "v1.0.0"
-
-[[projects]]
   branch = "master"
   name = "github.com/golang/mock"
   packages = ["gomock"]
@@ -131,6 +119,12 @@
   packages = ["proto"]
   revision = "925541529c1fa6821df4e44ce2723319eb2be768"
   version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/golangci/golangci-lint"
+  packages = ["pkg/result"]
+  revision = "0e107e1d78369df5b1e8bce64f20af39d707f8de"
 
 [[projects]]
   branch = "master"
@@ -317,21 +311,9 @@
   packages = ["."]
   revision = "d670f9405373e636a5a2765eea47fac0c9bc91a4"
 
-[[projects]]
-  branch = "master"
-  name = "sourcegraph.com/sourcegraph/go-diff"
-  packages = ["diff"]
-  revision = "3f415a150aec0685cb81b73cc201e762e075006d"
-
-[[projects]]
-  branch = "master"
-  name = "sourcegraph.com/sqs/pbtypes"
-  packages = ["."]
-  revision = "4d1b9dc7ffc3f7b555de9b02055fa616f0ebcd18"
-
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "da9106a51ffe932aa93721b105be83e8db2dbdc12327c51432f2a69ee64fe24e"
+  inputs-digest = "29ff4174f23614cf4b55818750e6e90089915861cce8c45e4a3cefe3603bf71c"
   solver-name = "gps-cdcl"
   solver-version = 1
