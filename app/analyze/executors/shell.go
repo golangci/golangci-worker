@@ -67,10 +67,10 @@ func trackMemoryEveryNSeconds(ctx context.Context, name string, pid int) {
 	}
 }
 
-func (s shell) wait(ctx context.Context, name string, pid int, outReader io.ReadCloser) []string {
+func (s shell) wait(ctx context.Context, name string, childPid int, outReader io.ReadCloser) []string {
 	trackCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go trackMemoryEveryNSeconds(trackCtx, name, pid)
+	go trackMemoryEveryNSeconds(trackCtx, name, childPid)
 
 	scanner := bufio.NewScanner(outReader)
 	lines := []string{}

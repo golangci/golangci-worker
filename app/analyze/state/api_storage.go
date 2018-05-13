@@ -28,7 +28,9 @@ func getHTTPClient() *http.Client {
 	}
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
 	}
 	return &http.Client{Transport: tr}
 }
