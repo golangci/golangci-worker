@@ -30,6 +30,7 @@ const (
 
 type Client interface {
 	GetPullRequest(ctx context.Context, c *Context) (*gh.PullRequest, error)
+	GetPullRequestComments(ctx context.Context, c *Context) ([]*gh.PullRequestComment, error)
 	GetPullRequestPatch(ctx context.Context, c *Context) (string, error)
 	CreateReview(ctx context.Context, c *Context, review *gh.PullRequestReviewRequest) error
 	SetCommitStatus(ctx context.Context, c *Context, ref string, status Status, desc string) error
@@ -151,4 +152,33 @@ func (gc *MyClient) SetCommitStatus(ctx context.Context, c *Context, ref string,
 	}
 
 	return nil
+}
+
+func (gc *MyClient) GetPullRequestComments(ctx context.Context, c *Context) ([]*gh.PullRequestComment, error) {
+	var ret []*gh.PullRequestComment
+
+	f := func() error {
+		opt := &gh.PullRequestListCommentsOptions{
+			ListOptions: gh.ListOptions{
+				PerPage: 100, // max allowed value, TODO: fetch all comments if >100
+			},
+		}
+		comments, _, err := c.GetClient(ctx).PullRequests.ListComments(ctx, c.Repo.Owner, c.Repo.Name, c.PullRequestNumber, opt)
+		if err != nil {
+			return err
+		}
+
+		ret = comments
+		return nil
+	}
+
+	if err := retryGet(f); err != nil {
+		if terr := transformGithubError(err); terr != nil {
+			return nil, terr
+		}
+
+		return nil, fmt.Errorf("can't get pull request %d comments from github: %s", c.PullRequestNumber, err)
+	}
+
+	return ret, nil
 }

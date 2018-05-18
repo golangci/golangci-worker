@@ -30,20 +30,70 @@ func NewGithubReviewer(c *github.Context, client github.Client) *GithubReviewer 
 	return ret
 }
 
+type existingComment struct {
+	file string
+	line int
+}
+
+type existingComments []existingComment
+
+func (ecs existingComments) contains(i *result.Issue) bool {
+	for _, c := range ecs {
+		if c.file == i.File && c.line == i.LineNumber {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (gr GithubReviewer) fetchExistingComments(ctx context.Context) (existingComments, error) {
+	comments, err := gr.client.GetPullRequestComments(ctx, gr.Context)
+	if err != nil {
+		return nil, err
+	}
+
+	var ret existingComments
+	for _, c := range comments {
+		if c.Position == nil { // comment on outdated code, skip it
+			continue
+		}
+		ret = append(ret, existingComment{
+			file: c.GetPath(),
+			line: c.GetPosition(),
+		})
+	}
+
+	return ret, nil
+}
+
 func (gr GithubReviewer) Report(ctx context.Context, ref string, issues []result.Issue) error {
 	if len(issues) == 0 {
 		analytics.Log(ctx).Infof("Nothing to report")
 		return nil
 	}
 
+	existingComments, err := gr.fetchExistingComments(ctx)
+	if err != nil {
+		return err
+	}
+
 	comments := []*gh.DraftReviewComment{}
 	for _, i := range issues {
+		if existingComments.contains(&i) {
+			continue // don't be annoying: don't comment on the same line twice
+		}
+
 		comment := &gh.DraftReviewComment{
 			Path:     gh.String(i.File),
 			Position: gh.Int(i.HunkPos),
 			Body:     gh.String(i.Text),
 		}
 		comments = append(comments, comment)
+	}
+
+	if len(comments) == 0 {
+		return nil // all comments are already exist
 	}
 
 	review := &gh.PullRequestReviewRequest{
