@@ -46,6 +46,19 @@ func (_mr *MockClientMockRecorder) GetPullRequest(arg0, arg1 interface{}) *gomoc
 	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "GetPullRequest", reflect.TypeOf((*MockClient)(nil).GetPullRequest), arg0, arg1)
 }
 
+// GetPullRequestComments mocks base method
+func (_m *MockClient) GetPullRequestComments(ctx context.Context, c *Context) ([]*github.PullRequestComment, error) {
+	ret := _m.ctrl.Call(_m, "GetPullRequestComments", ctx, c)
+	ret0, _ := ret[0].([]*github.PullRequestComment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPullRequestComments indicates an expected call of GetPullRequestComments
+func (_mr *MockClientMockRecorder) GetPullRequestComments(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "GetPullRequestComments", reflect.TypeOf((*MockClient)(nil).GetPullRequestComments), arg0, arg1)
+}
+
 // GetPullRequestPatch mocks base method
 func (_m *MockClient) GetPullRequestPatch(ctx context.Context, c *Context) (string, error) {
 	ret := _m.ctrl.Call(_m, "GetPullRequestPatch", ctx, c)
