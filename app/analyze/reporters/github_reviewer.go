@@ -53,6 +53,8 @@ func (gr GithubReviewer) fetchExistingComments(ctx context.Context) (existingCom
 		return nil, err
 	}
 
+	analytics.Log(ctx).Infof("pr comments: %+v", comments)
+
 	var ret existingComments
 	for _, c := range comments {
 		if c.Position == nil { // comment on outdated code, skip it
@@ -106,6 +108,7 @@ func (gr GithubReviewer) Report(ctx context.Context, ref string, issues []result
 		return fmt.Errorf("can't create review %+v: %s", review, err)
 	}
 
-	analytics.Log(ctx).Infof("Submitted review %+v", review)
+	analytics.Log(ctx).Infof("Submitted review %+v, existing comments: %+v, issues: %+v",
+		review, existingComments, issues)
 	return nil
 }
