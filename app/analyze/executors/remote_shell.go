@@ -71,8 +71,14 @@ func (s RemoteShell) Run(ctx context.Context, name string, srcArgs ...string) (s
 
 	out, err := exec.CommandContext(ctx, "ssh", args...).Output()
 	if err != nil {
-		return "", fmt.Errorf("can't execute command ssh %s: %s, %s",
-			sprintArgs(args), err, string(out))
+		var stderr string
+		if ee, ok := err.(*exec.ExitError); ok {
+			if ee.Stderr != nil {
+				stderr = string(ee.Stderr)
+			}
+		}
+		return "", fmt.Errorf("can't execute command ssh %s: %s, %s, %s",
+			sprintArgs(args), err, string(out), stderr)
 	}
 
 	return string(out), nil
