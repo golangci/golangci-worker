@@ -39,7 +39,7 @@ type existingComments []existingComment
 
 func (ecs existingComments) contains(i *result.Issue) bool {
 	for _, c := range ecs {
-		if c.file == i.File && c.line == i.LineNumber {
+		if c.file == i.File && c.line == i.HunkPos {
 			return true
 		}
 	}
