@@ -4,6 +4,11 @@ set -x
 
 echo "GOPATH='$GOPATH'"
 
+if [[ ! -n $(find . -name "*.go") ]]; then
+    echo 'no go files in repository'
+    exit 0
+fi
+
 if [ -d "vendor" ]; then
   if [[ $(find vendor -name "*.go" | head -1) ]]; then
     echo "vendor dir exists with go sources, skip vendoring"
