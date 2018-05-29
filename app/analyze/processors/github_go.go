@@ -163,6 +163,7 @@ func (g githubGo) processInWorkDir(ctx context.Context) error {
 	statusDesc := "No issues found!"
 	var issues []result.Issue
 	defer func() {
+		ctx = context.Background() // no timeout for state and status saving: it must be durable
 		g.setCommitStatus(ctx, status, statusDesc)
 
 		s := &state.State{
