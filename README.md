@@ -11,3 +11,4 @@ make run_dev
 
 # Contributing
 See [CONTRIBUTING](https://github.com/golangci/golangci-worker/blob/master/CONTRIBUTING.md).
+
