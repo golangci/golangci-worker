@@ -3,8 +3,8 @@ package analyze
 import (
 	"context"
 	"fmt"
-	"runtime/debug"
 	"log"
+	"runtime/debug"
 	"strconv"
 	"time"
 
@@ -22,7 +22,7 @@ func analyze(ctx context.Context, repoOwner, repoName, githubAccessToken string,
 	pullRequestNumber int, APIRequestID string, userID uint, analysisGUID string) error {
 
 	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, 5*time.Minute)
+	ctx, cancel = context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
 	t := &task.Task{
