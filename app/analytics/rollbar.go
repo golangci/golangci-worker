@@ -14,12 +14,16 @@ func trackError(ctx context.Context, err error, level string) {
 	}
 
 	trackingProps := getTrackingProps(ctx)
-	f := &rollbar.Field{
+	tf := &rollbar.Field{
 		Name: "props",
 		Data: trackingProps,
 	}
+	pf := &rollbar.Field{
+		Name: "project",
+		Data: "worker",
+	}
 
-	rollbar.Error(level, err, f)
+	rollbar.Error(level, err, tf, pf)
 }
 
 func init() {
