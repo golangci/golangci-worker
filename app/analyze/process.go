@@ -22,6 +22,8 @@ func analyze(ctx context.Context, repoOwner, repoName, githubAccessToken string,
 	pullRequestNumber int, APIRequestID string, userID uint, analysisGUID string) error {
 
 	var cancel context.CancelFunc
+	// If you change timeout value don't forget to change it
+	// in golangci-api stale analyzes checker
 	ctx, cancel = context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
