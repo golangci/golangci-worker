@@ -30,6 +30,7 @@ func (g golangciLint) Run(ctx context.Context, exec executors.Executor) (*result
 		"--out-format=json",
 		"--issues-exit-code=0",
 		"--print-welcome=false",
+		"--deadline=5m",
 		"--new-from-patch=../../../../changes.patch",
 		filepath.Join(exec.WorkDir(), "..."),
 	)
