@@ -1,6 +1,7 @@
 package executors
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os/exec"
@@ -8,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/sirupsen/logrus"
 )
 
@@ -69,16 +71,19 @@ func (s RemoteShell) Run(ctx context.Context, name string, srcArgs ...string) (s
 		shellArg,
 	}
 
-	out, err := exec.CommandContext(ctx, "ssh", args...).Output()
+	cmd := exec.CommandContext(ctx, "ssh", args...)
+	var stderrBuf bytes.Buffer
+	cmd.Stderr = &stderrBuf
+
+	out, err := cmd.Output()
+	stderr := stderrBuf.String()
 	if err != nil {
-		var stderr string
-		if ee, ok := err.(*exec.ExitError); ok {
-			if ee.Stderr != nil {
-				stderr = string(ee.Stderr)
-			}
-		}
 		return "", fmt.Errorf("can't execute command ssh %s: %s, %s, %s",
 			sprintArgs(args), err, string(out), stderr)
+	}
+
+	if stderr != "" {
+		analytics.Log(ctx).Warnf("golangci-lint warnings: %s", stderr)
 	}
 
 	return string(out), nil
