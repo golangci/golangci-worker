@@ -83,10 +83,38 @@ func (s RemoteShell) Run(ctx context.Context, name string, srcArgs ...string) (s
 	}
 
 	if stderr != "" {
-		analytics.Log(ctx).Warnf("golangci-lint warnings: %s", stderr)
+		processStderr(ctx, stderr)
 	}
 
 	return string(out), nil
+}
+
+func processStderr(ctx context.Context, stderr string) {
+	skipPatterns := []string{
+		// TODO: it should be reported to user in details of analysis
+		"Can't run megacheck because of compilation errors in ",
+	}
+
+	lines := strings.Split(stderr, "\n")
+	var allowedLines []string
+	for _, line := range lines {
+		skip := false
+		for _, sp := range skipPatterns {
+			if strings.Contains(line, sp) {
+				skip = true
+				break
+			}
+		}
+		if !skip {
+			allowedLines = append(allowedLines, line)
+		}
+	}
+
+	if len(allowedLines) == 0 {
+		return
+	}
+
+	analytics.Log(ctx).Warnf("golangci-lint warnings: %s", strings.Join(allowedLines, "\n"))
 }
 
 func (s RemoteShell) CopyFile(ctx context.Context, dst, src string) error {
