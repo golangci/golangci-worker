@@ -98,6 +98,11 @@ func processStderr(ctx context.Context, stderr string) {
 	lines := strings.Split(stderr, "\n")
 	var allowedLines []string
 	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
 		skip := false
 		for _, sp := range skipPatterns {
 			if strings.Contains(line, sp) {
@@ -114,7 +119,7 @@ func processStderr(ctx context.Context, stderr string) {
 		return
 	}
 
-	analytics.Log(ctx).Warnf("golangci-lint warnings: %s", strings.Join(allowedLines, "\n"))
+	analytics.Log(ctx).Warnf("golangci-lint warnings: %q", strings.Join(allowedLines, "\n"))
 }
 
 func (s RemoteShell) CopyFile(ctx context.Context, dst, src string) error {
