@@ -197,14 +197,14 @@ func (g githubGo) processInWorkDir(ctx context.Context) error {
 	}()
 
 	prState := strings.ToUpper(g.pr.GetState())
-	if prState == "MERGED" || prState == "OPENED" {
+	if prState == "MERGED" || prState == "CLOSED" {
 		// branch can be deleted: will be an error; no need to analyze
 		analytics.Log(ctx).Warnf("pr %+v is already %s, skip analysis", g.pr, prState)
 		return nil
 	}
 
 	if err := g.prepareRepo(ctx); err != nil {
-		return err
+		return fmt.Errorf("can't prepare repo from pr %+v: %s", *g.pr, err)
 	}
 
 	var err error
