@@ -1,6 +1,5 @@
 #!/bin/bash
 set -e
-set -x
 
 echo "GOPATH='$GOPATH'"
 
@@ -18,7 +17,7 @@ fi
 
 if [[ -f 'Gopkg.toml' ]]; then
   	echo 'Dep was detected'
-  	dep ensure -v
+    dep ensure
 elif [[ -f 'glide.yaml' ]]; then
   	echo 'Glide was detected'
   	glide install
