@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/environments"
@@ -181,6 +182,7 @@ func (g githubGo) updateAnalysisState(ctx context.Context, res *result.Result, s
 	}
 }
 
+//nolint:gocyclo
 func (g githubGo) processInWorkDir(ctx context.Context) error {
 	status := github.StatusSuccess // Hide all internal errors
 	statusDesc := "No issues found!"
@@ -193,6 +195,13 @@ func (g githubGo) processInWorkDir(ctx context.Context) error {
 		g.updateAnalysisState(ctx, res, status)
 		g.setCommitStatus(ctx, status, statusDesc)
 	}()
+
+	prState := strings.ToUpper(g.pr.GetState())
+	if prState == "MERGED" || prState == "OPENED" {
+		// branch can be deleted: will be an error; no need to analyze
+		analytics.Log(ctx).Warnf("pr %+v is already %s, skip analysis", g.pr, prState)
+		return nil
+	}
 
 	if err := g.prepareRepo(ctx); err != nil {
 		return err
