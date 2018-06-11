@@ -7,6 +7,7 @@ import (
 type State struct {
 	Status              string
 	ReportedIssuesCount int
+	ResultJSON          interface{}
 }
 
 type Storage interface {

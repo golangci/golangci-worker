@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
 	"strconv"
 	"strings"
 	"testing"
@@ -20,7 +19,6 @@ import (
 	"github.com/golangci/golangci-worker/app/analyze/reporters"
 	"github.com/golangci/golangci-worker/app/analyze/state"
 	"github.com/golangci/golangci-worker/app/test"
-	"github.com/golangci/golangci-worker/app/utils/fsutils"
 	"github.com/golangci/golangci-worker/app/utils/github"
 	gh "github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
@@ -62,12 +60,6 @@ func getNopFetcher(ctrl *gomock.Controller) fetchers.Fetcher {
 	return f
 }
 
-func getFakeReporter(ctrl *gomock.Controller, expIssues ...result.Issue) reporters.Reporter {
-	r := reporters.NewMockReporter(ctrl)
-	r.EXPECT().Report(testCtxMatcher, testSHA, expIssues).Return(nil)
-	return r
-}
-
 func getNopReporter(ctrl *gomock.Controller) reporters.Reporter {
 	r := reporters.NewMockReporter(ctrl)
 	r.EXPECT().Report(testCtxMatcher, any, any).AnyTimes().Return(nil)
@@ -87,25 +79,6 @@ func getNopState(ctrl *gomock.Controller) state.Storage {
 		Status: "sent_to_queue",
 	}, nil)
 	return r
-}
-
-func getFakeExecutor(ctrl *gomock.Controller) executors.Executor {
-	gopathE := executors.NewMockExecutor(ctrl)
-	repoE := executors.NewMockExecutor(ctrl)
-
-	tmpDir := path.Join("/", "tmp", "golangci")
-	wdCall := gopathE.EXPECT().WorkDir().Return(tmpDir)
-
-	wwdCall := gopathE.EXPECT().
-		WithWorkDir(path.Join(tmpDir, "src", "github.com", "owner", "name")).
-		Return(repoE).After(wdCall)
-
-	runCall := repoE.EXPECT().
-		Run(testCtxMatcher, "bash", path.Join(fsutils.GetProjectRoot(), "app", "scripts", "ensure_deps.sh")).
-		Return("", nil).After(wwdCall)
-
-	gopathE.EXPECT().Clean().After(runCall)
-	return gopathE
 }
 
 func getNopExecutor(ctrl *gomock.Controller) executors.Executor {

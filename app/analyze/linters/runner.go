@@ -3,6 +3,7 @@ package linters
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/executors"
@@ -11,14 +12,14 @@ import (
 )
 
 type Runner interface {
-	Run(ctx context.Context, linters []Linter, exec executors.Executor) ([]result.Issue, error)
+	Run(ctx context.Context, linters []Linter, exec executors.Executor) (*result.Result, error)
 }
 
 type SimpleRunner struct {
 	Processors []processors.Processor
 }
 
-func (r SimpleRunner) Run(ctx context.Context, linters []Linter, exec executors.Executor) ([]result.Issue, error) {
+func (r SimpleRunner) Run(ctx context.Context, linters []Linter, exec executors.Executor) (*result.Result, error) {
 	results := []result.Result{}
 	for _, linter := range linters {
 		res, err := linter.Run(ctx, exec)
@@ -27,6 +28,7 @@ func (r SimpleRunner) Run(ctx context.Context, linters []Linter, exec executors.
 			continue
 		}
 
+		// TODO: don't skip when will store all issues, not only new
 		if len(res.Issues) == 0 {
 			continue
 		}
@@ -58,11 +60,15 @@ func (r SimpleRunner) processResults(results []result.Result) ([]result.Result, 
 	return results, nil
 }
 
-func (r SimpleRunner) mergeResults(results []result.Result) []result.Issue {
-	issues := []result.Issue{}
-	for _, r := range results {
-		issues = append(issues, r.Issues...)
+func (r SimpleRunner) mergeResults(results []result.Result) *result.Result {
+	if len(results) == 0 {
+		return nil
 	}
 
-	return issues
+	if len(results) > 1 {
+		log.Fatalf("len(results) can't be more than 1: %+v", results)
+	}
+
+	// TODO: support for multiple linters, not only golangci-lint
+	return &results[0]
 }

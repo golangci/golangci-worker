@@ -39,6 +39,7 @@ type githubGo struct {
 	githubGoConfig
 }
 
+//nolint:gocyclo
 func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig, analysisGUID string) (*githubGo, error) {
 	if cfg.client == nil {
 		cfg.client = github.NewMyClient()
@@ -154,25 +155,43 @@ func (g githubGo) prepareRepo(ctx context.Context) error {
 	return nil
 }
 
-func (g githubGo) runLinters(ctx context.Context) ([]result.Issue, error) {
-	return g.runner.Run(ctx, g.linters, g.exec)
+type resultJSON struct {
+	Version         int
+	GolangciLintRes interface{}
+}
+
+func (g githubGo) updateAnalysisState(ctx context.Context, res *result.Result, status github.Status) {
+	var resJSON *resultJSON
+	issuesCount := 0
+	if res != nil {
+		resJSON = &resultJSON{
+			Version:         1,
+			GolangciLintRes: res.ResultJSON,
+		}
+		issuesCount = len(res.Issues)
+	}
+	s := &state.State{
+		Status:              "processed/" + string(status),
+		ReportedIssuesCount: issuesCount,
+		ResultJSON:          resJSON,
+	}
+
+	if err := g.state.UpdateState(ctx, g.analysisGUID, s); err != nil {
+		analytics.Log(ctx).Warnf("Can't set analysis %s status to '%v': %s", g.analysisGUID, s, err)
+	}
 }
 
 func (g githubGo) processInWorkDir(ctx context.Context) error {
-	status := github.StatusSuccess // Hide all out internal errors
+	status := github.StatusSuccess // Hide all internal errors
 	statusDesc := "No issues found!"
 	var issues []result.Issue
+	var res *result.Result
 	defer func() {
 		ctx = context.Background() // no timeout for state and status saving: it must be durable
-		g.setCommitStatus(ctx, status, statusDesc)
 
-		s := &state.State{
-			Status:              "processed/" + string(status),
-			ReportedIssuesCount: len(issues),
-		}
-		if err := g.state.UpdateState(ctx, g.analysisGUID, s); err != nil {
-			analytics.Log(ctx).Warnf("Can't set analysis %s status to '%v': %s", g.analysisGUID, s, err)
-		}
+		// update of state must be before commit status update: user can open details link before: race condition
+		g.updateAnalysisState(ctx, res, status)
+		g.setCommitStatus(ctx, status, statusDesc)
 	}()
 
 	if err := g.prepareRepo(ctx); err != nil {
@@ -180,9 +199,13 @@ func (g githubGo) processInWorkDir(ctx context.Context) error {
 	}
 
 	var err error
-	issues, err = g.runLinters(ctx)
+	res, err = g.runner.Run(ctx, g.linters, g.exec)
 	if err != nil {
 		return err
+	}
+
+	if res != nil {
+		issues = res.Issues
 	}
 
 	analytics.SaveEventProp(ctx, analytics.EventPRChecked, "reportedIssues", len(issues))
