@@ -71,7 +71,10 @@ func TestSendReceiveProcessing(t *testing.T) {
 	test.Init()
 	queue.Init()
 	RegisterTasks()
-	go RunWorker()
+	go func() {
+		err := RunWorker()
+		assert.NoError(t, err)
+	}()
 
 	assert.NoError(t, analyzerqueue.Send(task))
 

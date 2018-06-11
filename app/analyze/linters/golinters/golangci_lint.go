@@ -1,14 +1,13 @@
 package golinters
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
 
-	lintres "github.com/golangci/golangci-lint/pkg/result"
+	"github.com/golangci/golangci-lint/pkg/printers"
 	"github.com/golangci/golangci-worker/app/analyze/executors"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
 )
@@ -38,21 +37,21 @@ func (g golangciLint) Run(ctx context.Context, exec executors.Executor) (*result
 		return nil, fmt.Errorf("can't run %s: %s, %s", g.Name(), err, out)
 	}
 
-	var issues []lintres.Issue
-	scanner := bufio.NewScanner(strings.NewReader(out))
-	for scanner.Scan() {
-		line := scanner.Text()
-		if !strings.HasPrefix(line, "[") {
-			continue
+	var res printers.JSONResult
+	rawJSON := []byte(out)
+	if strings.HasPrefix(out, "[") {
+		// old format
+		if err = json.Unmarshal(rawJSON, &res.Issues); err != nil {
+			return nil, fmt.Errorf("can't parse json output '%s' of %s: %s", out, g.Name(), err)
 		}
-		if err = json.Unmarshal([]byte(line), &issues); err != nil {
-			return nil, fmt.Errorf("can't parse json output '%s' of %s: %s, %s", line, g.Name(), err, out)
+	} else {
+		if err = json.Unmarshal(rawJSON, &res); err != nil {
+			return nil, fmt.Errorf("can't parse json output '%s' of %s: %s", out, g.Name(), err)
 		}
-		break
 	}
 
 	var retIssues []result.Issue
-	for _, i := range issues {
+	for _, i := range res.Issues {
 		retIssues = append(retIssues, result.Issue{
 			File:       i.FilePath(),
 			LineNumber: i.Line(),
@@ -62,6 +61,7 @@ func (g golangciLint) Run(ctx context.Context, exec executors.Executor) (*result
 		})
 	}
 	return &result.Result{
-		Issues: retIssues,
+		Issues:     retIssues,
+		ResultJSON: res,
 	}, nil
 }
