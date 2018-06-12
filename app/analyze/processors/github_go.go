@@ -153,6 +153,11 @@ func (g githubGo) prepareRepo(ctx context.Context) error {
 		analytics.Log(ctx).Warnf("Can't ensure deps: %s, %s", err, out)
 	}
 
+	goinstallPath := path.Join("/app", "go_install.sh")
+	if out, err := g.exec.Run(ctx, "bash", goinstallPath); err != nil {
+		analytics.Log(ctx).Warnf("Can't go install: %s, %s", err, out)
+	}
+
 	return nil
 }
 
