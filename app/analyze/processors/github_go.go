@@ -182,7 +182,7 @@ func (g githubGo) updateAnalysisState(ctx context.Context, res *result.Result, s
 		ResultJSON:          resJSON,
 	}
 
-	if err := g.state.UpdateState(ctx, g.analysisGUID, s); err != nil {
+	if err := g.state.UpdateState(ctx, g.context.Repo.Owner, g.context.Repo.Name, g.analysisGUID, s); err != nil {
 		analytics.Log(ctx).Warnf("Can't set analysis %s status to '%v': %s", g.analysisGUID, s, err)
 	}
 }
@@ -263,12 +263,12 @@ func (g githubGo) Process(ctx context.Context) error {
 	}
 
 	g.setCommitStatus(ctx, github.StatusPending, "GolangCI is reviewing your Pull Request...")
-	curState, err := g.state.GetState(ctx, g.analysisGUID)
+	curState, err := g.state.GetState(ctx, g.context.Repo.Owner, g.context.Repo.Name, g.analysisGUID)
 	if err != nil {
 		analytics.Log(ctx).Warnf("Can't get current state: %s", err)
 	} else if curState.Status == "sent_to_queue" {
 		curState.Status = "processing"
-		if err = g.state.UpdateState(ctx, g.analysisGUID, curState); err != nil {
+		if err = g.state.UpdateState(ctx, g.context.Repo.Owner, g.context.Repo.Name, g.analysisGUID, curState); err != nil {
 			analytics.Log(ctx).Warnf("Can't update analysis %s state with setting status to 'processing': %s", g.analysisGUID, err)
 		}
 	}
