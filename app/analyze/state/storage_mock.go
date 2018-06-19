@@ -33,26 +33,26 @@ func (_m *MockStorage) EXPECT() *MockStorageMockRecorder {
 }
 
 // UpdateState mocks base method
-func (_m *MockStorage) UpdateState(ctx context.Context, analysisID string, state *State) error {
-	ret := _m.ctrl.Call(_m, "UpdateState", ctx, analysisID, state)
+func (_m *MockStorage) UpdateState(ctx context.Context, owner string, name string, analysisID string, state *State) error {
+	ret := _m.ctrl.Call(_m, "UpdateState", ctx, owner, name, analysisID, state)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateState indicates an expected call of UpdateState
-func (_mr *MockStorageMockRecorder) UpdateState(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "UpdateState", reflect.TypeOf((*MockStorage)(nil).UpdateState), arg0, arg1, arg2)
+func (_mr *MockStorageMockRecorder) UpdateState(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "UpdateState", reflect.TypeOf((*MockStorage)(nil).UpdateState), arg0, arg1, arg2, arg3, arg4)
 }
 
 // GetState mocks base method
-func (_m *MockStorage) GetState(ctx context.Context, analysisID string) (*State, error) {
-	ret := _m.ctrl.Call(_m, "GetState", ctx, analysisID)
+func (_m *MockStorage) GetState(ctx context.Context, owner string, name string, analysisID string) (*State, error) {
+	ret := _m.ctrl.Call(_m, "GetState", ctx, owner, name, analysisID)
 	ret0, _ := ret[0].(*State)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetState indicates an expected call of GetState
-func (_mr *MockStorageMockRecorder) GetState(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "GetState", reflect.TypeOf((*MockStorage)(nil).GetState), arg0, arg1)
+func (_mr *MockStorageMockRecorder) GetState(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "GetState", reflect.TypeOf((*MockStorage)(nil).GetState), arg0, arg1, arg2, arg3)
 }

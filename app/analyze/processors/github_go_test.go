@@ -74,8 +74,8 @@ func getErroredReporter(ctrl *gomock.Controller) reporters.Reporter {
 
 func getNopState(ctrl *gomock.Controller) state.Storage {
 	r := state.NewMockStorage(ctrl)
-	r.EXPECT().UpdateState(any, any, any).AnyTimes().Return(nil)
-	r.EXPECT().GetState(any, any).AnyTimes().Return(&state.State{
+	r.EXPECT().UpdateState(any, any, any, any, any).AnyTimes().Return(nil)
+	r.EXPECT().GetState(any, any, any, any).AnyTimes().Return(&state.State{
 		Status: "sent_to_queue",
 	}, nil)
 	return r

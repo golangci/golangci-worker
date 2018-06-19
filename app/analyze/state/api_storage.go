@@ -35,17 +35,17 @@ func getHTTPClient() *http.Client {
 	return &http.Client{Transport: tr}
 }
 
-func (s APIStorage) getStatusURL(analysisID string) string {
-	return fmt.Sprintf("%s/v1/repos/repo/owner/analyzes/%s/state", s.Host, analysisID)
+func (s APIStorage) getStatusURL(owner, name, analysisID string) string {
+	return fmt.Sprintf("%s/v1/repos/%s/%s/analyzes/%s/state", s.Host, owner, name, analysisID)
 }
 
-func (s APIStorage) UpdateState(ctx context.Context, analysisID string, state *State) error {
+func (s APIStorage) UpdateState(ctx context.Context, owner, name, analysisID string, state *State) error {
 	body, err := json.Marshal(state)
 	if err != nil {
 		return fmt.Errorf("can't marshal payload json: %s", err)
 	}
 
-	req, err := http.NewRequest("PUT", s.getStatusURL(analysisID), bytes.NewReader(body))
+	req, err := http.NewRequest("PUT", s.getStatusURL(owner, name, analysisID), bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("can't build http request: %s", err)
 	}
@@ -66,8 +66,8 @@ func (s APIStorage) UpdateState(ctx context.Context, analysisID string, state *S
 	return nil
 }
 
-func (s APIStorage) GetState(ctx context.Context, analysisID string) (*State, error) {
-	req, err := http.NewRequest("GET", s.getStatusURL(analysisID), nil)
+func (s APIStorage) GetState(ctx context.Context, owner, name, analysisID string) (*State, error) {
+	req, err := http.NewRequest("GET", s.getStatusURL(owner, name, analysisID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("can't build http request: %s", err)
 	}
