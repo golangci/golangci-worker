@@ -45,12 +45,11 @@ var testPR = &gh.PullRequest{
 }
 var testAnalysisGUID = "test-guid"
 
-func badFunc() {
+func BadFunc() {
 	if true {
 		return
-	} else {
-		getNopFetcher(nil)
 	}
+	getNopFetcher(nil)
 }
 
 func getFakeLinters(ctrl *gomock.Controller, issues ...result.Issue) []linters.Linter {
