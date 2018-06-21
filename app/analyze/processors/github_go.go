@@ -247,7 +247,13 @@ func (g githubGo) processInWorkDir(ctx context.Context) error {
 }
 
 func (g githubGo) setCommitStatus(ctx context.Context, status github.Status, desc string) {
-	err := g.client.SetCommitStatus(ctx, g.context, g.pr.GetHead().GetSHA(), status, desc)
+	var url string
+	if status == github.StatusFailure || status == github.StatusSuccess {
+		c := g.context
+		url = fmt.Sprintf("https://golangci.com/r/%s/%s/pulls/%d",
+			c.Repo.Owner, c.Repo.Name, g.pr.Number)
+	}
+	err := g.client.SetCommitStatus(ctx, g.context, g.pr.GetHead().GetSHA(), status, desc, url)
 	if err != nil {
 		analytics.Log(ctx).Warnf("Can't set commit status: %s", err)
 	}

@@ -41,6 +41,7 @@ var testPR = &gh.PullRequest{
 		Ref: gh.String(testBranch),
 		SHA: gh.String(testSHA),
 	},
+	Number: gh.Int(7),
 }
 var testAnalysisGUID = "test-guid"
 
@@ -100,12 +101,14 @@ func getFakeStatusGithubClient(t *testing.T, ctrl *gomock.Controller, status git
 	gc := github.NewMockClient(ctrl)
 	gc.EXPECT().GetPullRequest(testCtxMatcher, c).Return(testPR, nil)
 
-	scsPending := gc.EXPECT().SetCommitStatus(testCtxMatcher, c, testSHA, github.StatusPending, "GolangCI is reviewing your Pull Request...").
+	scsPending := gc.EXPECT().SetCommitStatus(testCtxMatcher, c, testSHA,
+		github.StatusPending, "GolangCI is reviewing your Pull Request...", "").
 		Return(nil)
 
 	gc.EXPECT().GetPullRequestPatch(any, any).AnyTimes().Return(getFakePatch())
 
-	gc.EXPECT().SetCommitStatus(testCtxMatcher, c, testSHA, status, statusDesc).After(scsPending)
+	url := fmt.Sprintf("https://golangci.com/r/%s/%s/pulls/%d", c.Repo.Owner, c.Repo.Name, testPR.Number)
+	gc.EXPECT().SetCommitStatus(testCtxMatcher, c, testSHA, status, statusDesc, url).After(scsPending)
 
 	return gc
 }
@@ -117,7 +120,7 @@ func getNopGithubClient(ctrl *gomock.Controller) github.Client {
 	gc.EXPECT().CreateReview(any, any, any).AnyTimes()
 	gc.EXPECT().GetPullRequest(testCtxMatcher, c).AnyTimes().Return(testPR, nil)
 	gc.EXPECT().GetPullRequestPatch(any, any).AnyTimes().Return(getFakePatch())
-	gc.EXPECT().SetCommitStatus(any, any, testSHA, any, any).AnyTimes()
+	gc.EXPECT().SetCommitStatus(any, any, testSHA, any, any, any).AnyTimes()
 	return gc
 }
 
@@ -213,7 +216,7 @@ func getRealisticTestProcessor(ctx context.Context, t *testing.T, ctrl *gomock.C
 	}
 	gc := github.NewMockClient(ctrl)
 	gc.EXPECT().GetPullRequest(testCtxMatcher, c).Return(pr, nil)
-	gc.EXPECT().SetCommitStatus(any, any, any, any, any).AnyTimes()
+	gc.EXPECT().SetCommitStatus(any, any, any, any, any, any).AnyTimes()
 
 	exec, err := executors.NewTempDirShell("gopath")
 	assert.NoError(t, err)
@@ -286,7 +289,7 @@ func getTestProcessorWithFakeGithub(ctx context.Context, t *testing.T, ctrl *gom
 	gc := github.NewMockClient(ctrl)
 	gc.EXPECT().GetPullRequestPatch(any, any).AnyTimes().Return(patch, nil)
 	gc.EXPECT().GetPullRequest(testCtxMatcher, c).Return(pr, nil)
-	gc.EXPECT().SetCommitStatus(any, any, any, any, any).AnyTimes()
+	gc.EXPECT().SetCommitStatus(any, any, any, any, any, any).AnyTimes()
 
 	cfg := githubGoConfig{
 		reporter: getNopReporter(ctrl),
