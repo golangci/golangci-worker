@@ -33,7 +33,7 @@ type Client interface {
 	GetPullRequestComments(ctx context.Context, c *Context) ([]*gh.PullRequestComment, error)
 	GetPullRequestPatch(ctx context.Context, c *Context) (string, error)
 	CreateReview(ctx context.Context, c *Context, review *gh.PullRequestReviewRequest) error
-	SetCommitStatus(ctx context.Context, c *Context, ref string, status Status, desc string) error
+	SetCommitStatus(ctx context.Context, c *Context, ref string, status Status, desc, url string) error
 }
 
 type MyClient struct{}
@@ -136,11 +136,14 @@ func (gc *MyClient) GetPullRequestPatch(ctx context.Context, c *Context) (string
 	return ret, nil
 }
 
-func (gc *MyClient) SetCommitStatus(ctx context.Context, c *Context, ref string, status Status, desc string) error {
+func (gc *MyClient) SetCommitStatus(ctx context.Context, c *Context, ref string, status Status, desc, url string) error {
 	rs := &gh.RepoStatus{
 		Description: gh.String(desc),
 		State:       gh.String(string(status)),
 		Context:     gh.String("GolangCI"),
+	}
+	if url != "" {
+		rs.URL = gh.String(url)
 	}
 	_, _, err := c.GetClient(ctx).Repositories.CreateStatus(ctx, c.Repo.Owner, c.Repo.Name, ref, rs)
 	if err != nil {

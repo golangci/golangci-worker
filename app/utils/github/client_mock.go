@@ -85,13 +85,13 @@ func (_mr *MockClientMockRecorder) CreateReview(arg0, arg1, arg2 interface{}) *g
 }
 
 // SetCommitStatus mocks base method
-func (_m *MockClient) SetCommitStatus(ctx context.Context, c *Context, ref string, status Status, desc string) error {
-	ret := _m.ctrl.Call(_m, "SetCommitStatus", ctx, c, ref, status, desc)
+func (_m *MockClient) SetCommitStatus(ctx context.Context, c *Context, ref string, status Status, desc string, url string) error {
+	ret := _m.ctrl.Call(_m, "SetCommitStatus", ctx, c, ref, status, desc, url)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SetCommitStatus indicates an expected call of SetCommitStatus
-func (_mr *MockClientMockRecorder) SetCommitStatus(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "SetCommitStatus", reflect.TypeOf((*MockClient)(nil).SetCommitStatus), arg0, arg1, arg2, arg3, arg4)
+func (_mr *MockClientMockRecorder) SetCommitStatus(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "SetCommitStatus", reflect.TypeOf((*MockClient)(nil).SetCommitStatus), arg0, arg1, arg2, arg3, arg4, arg5)
 }
