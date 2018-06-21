@@ -52,6 +52,10 @@ func BadFunc() {
 	getNopFetcher(nil)
 }
 
+func init() {
+	BadFunc()
+}
+
 func getFakeLinters(ctrl *gomock.Controller, issues ...result.Issue) []linters.Linter {
 	a := linters.NewMockLinter(ctrl)
 	a.EXPECT().
