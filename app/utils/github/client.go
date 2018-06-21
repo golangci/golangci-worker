@@ -143,7 +143,7 @@ func (gc *MyClient) SetCommitStatus(ctx context.Context, c *Context, ref string,
 		Context:     gh.String("GolangCI"),
 	}
 	if url != "" {
-		rs.URL = gh.String(url)
+		rs.TargetURL = gh.String(url)
 	}
 	_, _, err := c.GetClient(ctx).Repositories.CreateStatus(ctx, c.Repo.Owner, c.Repo.Name, ref, rs)
 	if err != nil {
