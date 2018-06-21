@@ -251,7 +251,7 @@ func (g githubGo) setCommitStatus(ctx context.Context, status github.Status, des
 	if status == github.StatusFailure || status == github.StatusSuccess {
 		c := g.context
 		url = fmt.Sprintf("https://golangci.com/r/%s/%s/pulls/%d",
-			c.Repo.Owner, c.Repo.Name, g.pr.Number)
+			c.Repo.Owner, c.Repo.Name, g.pr.GetNumber())
 	}
 	err := g.client.SetCommitStatus(ctx, g.context, g.pr.GetHead().GetSHA(), status, desc, url)
 	if err != nil {

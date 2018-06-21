@@ -107,7 +107,7 @@ func getFakeStatusGithubClient(t *testing.T, ctrl *gomock.Controller, status git
 
 	gc.EXPECT().GetPullRequestPatch(any, any).AnyTimes().Return(getFakePatch())
 
-	url := fmt.Sprintf("https://golangci.com/r/%s/%s/pulls/%d", c.Repo.Owner, c.Repo.Name, testPR.Number)
+	url := fmt.Sprintf("https://golangci.com/r/%s/%s/pulls/%d", c.Repo.Owner, c.Repo.Name, testPR.GetNumber())
 	gc.EXPECT().SetCommitStatus(testCtxMatcher, c, testSHA, status, statusDesc, url).After(scsPending)
 
 	return gc
