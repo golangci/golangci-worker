@@ -45,6 +45,14 @@ var testPR = &gh.PullRequest{
 }
 var testAnalysisGUID = "test-guid"
 
+func badFunc() {
+	if true {
+		return
+	} else {
+		getNopFetcher(nil)
+	}
+}
+
 func getFakeLinters(ctrl *gomock.Controller, issues ...result.Issue) []linters.Linter {
 	a := linters.NewMockLinter(ctrl)
 	a.EXPECT().
