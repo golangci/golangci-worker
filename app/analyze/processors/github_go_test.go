@@ -53,6 +53,14 @@ var testAnalysisGUID = "test-guid"
   }
 }
 
+  func BadFunc2() {
+	if false {
+		return
+	} else {
+  	getNopFetcher(nil)
+  }
+}
+
 func getFakeLinters(ctrl *gomock.Controller, issues ...result.Issue) []linters.Linter {
 	a := linters.NewMockLinter(ctrl)
 	a.EXPECT().
