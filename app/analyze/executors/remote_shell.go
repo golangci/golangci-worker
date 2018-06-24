@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/sirupsen/logrus"
 )
 
@@ -76,50 +75,12 @@ func (s RemoteShell) Run(ctx context.Context, name string, srcArgs ...string) (s
 	cmd.Stderr = &stderrBuf
 
 	out, err := cmd.Output()
-	stderr := stderrBuf.String()
 	if err != nil {
 		return "", fmt.Errorf("can't execute command ssh %s: %s, %s, %s",
-			sprintArgs(args), err, string(out), stderr)
-	}
-
-	if stderr != "" {
-		processStderr(ctx, stderr)
+			sprintArgs(args), err, string(out), stderrBuf.String())
 	}
 
 	return string(out), nil
-}
-
-func processStderr(ctx context.Context, stderr string) {
-	skipPatterns := []string{
-		// TODO: it should be reported to user in details of analysis
-		"Can't run megacheck because of compilation errors in ",
-	}
-
-	lines := strings.Split(stderr, "\n")
-	var allowedLines []string
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
-		skip := false
-		for _, sp := range skipPatterns {
-			if strings.Contains(line, sp) {
-				skip = true
-				break
-			}
-		}
-		if !skip {
-			allowedLines = append(allowedLines, line)
-		}
-	}
-
-	if len(allowedLines) == 0 {
-		return
-	}
-
-	analytics.Log(ctx).Warnf("golangci-lint warnings: %q", strings.Join(allowedLines, "\n"))
 }
 
 func (s RemoteShell) CopyFile(ctx context.Context, dst, src string) error {

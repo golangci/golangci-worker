@@ -26,6 +26,7 @@ jobs:
       - run: go get github.com/golang/dep/cmd/dep
       - run: dep ensure -v
       - run: make build
-      - run: make install_gometalinter
+      - run: go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
       - run: echo 'REDIS_URL="redis://localhost:6379"' >.env
+      - run: echo 'WEB_ROOT="https://golangci.com"' >>.env
       - run: make test

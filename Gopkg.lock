@@ -131,9 +131,12 @@
   name = "github.com/golangci/golangci-lint"
   packages = [
     "pkg/printers",
-    "pkg/result"
+    "pkg/result",
+    "pkg/logutils",
+    "pkg/exitcodes",
+    "pkg/report"
   ]
-  revision = "7c70250d8ca7824dace80dd9e58cc3faa09cb9b0"
+  revision = "fb38e51c8324e6c39c3254316d0ecc079bd13883"
 
 [[projects]]
   branch = "master"

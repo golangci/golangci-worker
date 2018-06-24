@@ -53,8 +53,6 @@ func (gr GithubReviewer) fetchExistingComments(ctx context.Context) (existingCom
 		return nil, err
 	}
 
-	analytics.Log(ctx).Infof("pr comments: %+v", comments)
-
 	var ret existingComments
 	for _, c := range comments {
 		if c.Position == nil { // comment on outdated code, skip it

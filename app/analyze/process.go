@@ -85,11 +85,16 @@ func analyzeLogged(ctx context.Context, repoOwner, repoName, githubAccessToken s
 	}
 	ctx = makeContext(ctx, trackingProps)
 
+	analytics.Log(ctx).Infof("Starting analysis of %s/%s#%d...", repoOwner, repoName, pullRequestNumber)
+
 	startedAt := time.Now()
 	err := analyze(ctx, repoOwner, repoName, githubAccessToken, pullRequestNumber, APIRequestID, userID, analysisGUID)
 
+	duration := time.Since(startedAt)
+	analytics.Log(ctx).Infof("Finished analysis of %s/%s#%d for %s", repoOwner, repoName, pullRequestNumber, duration)
+
 	props := map[string]interface{}{
-		"durationSeconds": int(time.Since(startedAt) / time.Second),
+		"durationSeconds": int(duration / time.Second),
 	}
 	if err == nil {
 		props["status"] = "ok"
