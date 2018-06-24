@@ -107,7 +107,8 @@ func getFakeStatusGithubClient(t *testing.T, ctrl *gomock.Controller, status git
 
 	gc.EXPECT().GetPullRequestPatch(any, any).AnyTimes().Return(getFakePatch())
 
-	url := fmt.Sprintf("https://golangci.com/r/%s/%s/pulls/%d", c.Repo.Owner, c.Repo.Name, testPR.GetNumber())
+	test.Init()
+	url := fmt.Sprintf("%s/r/%s/%s/pulls/%d", os.Getenv("WEB_ROOT"), c.Repo.Owner, c.Repo.Name, testPR.GetNumber())
 	gc.EXPECT().SetCommitStatus(testCtxMatcher, c, testSHA, status, statusDesc, url).After(scsPending)
 
 	return gc
@@ -191,14 +192,14 @@ func TestSetCommitStatusFailureTwoIssues(t *testing.T) {
 	})
 }
 
-func TestSetCommitStatusSuccessOnError(t *testing.T) {
+func TestSetCommitStatusOnReportingError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	p := getNopedProcessor(t, ctrl, githubGoConfig{
 		linters:  getFakeLinters(ctrl, fakeChangedIssue),
 		reporter: getErroredReporter(ctrl),
-		client:   getFakeStatusGithubClient(t, ctrl, github.StatusSuccess, "No issues found!"),
+		client:   getFakeStatusGithubClient(t, ctrl, github.StatusError, "can't send pull request comments to github"),
 	})
 	assert.Error(t, p.Process(testCtx))
 }

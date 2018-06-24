@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/golangci/golangci-lint/pkg/printers"
+	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/executors"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
+	"github.com/golangci/golangci-worker/app/utils/errorutils"
 )
 
 type golangciLint struct {
@@ -23,7 +24,7 @@ func (g golangciLint) Run(ctx context.Context, exec executors.Executor) (*result
 	exec = exec.WithEnv("GOLANGCI_COM_RUN", "1")
 
 	// TODO: check golangci-lint warnings in stderr
-	out, err := exec.Run(ctx,
+	out, runErr := exec.Run(ctx,
 		g.Name(),
 		"run",
 		"--out-format=json",
@@ -33,21 +34,33 @@ func (g golangciLint) Run(ctx context.Context, exec executors.Executor) (*result
 		"--new-from-patch=../../../../changes.patch",
 		filepath.Join(exec.WorkDir(), "..."),
 	)
-	if err != nil {
-		return nil, fmt.Errorf("can't run %s: %s, %s", g.Name(), err, out)
+	rawJSON := []byte(out)
+
+	if runErr != nil {
+		var res printers.JSONResult
+		if jsonErr := json.Unmarshal(rawJSON, &res); jsonErr == nil && res.Report.Error != "" {
+			return nil, &errorutils.InternalError{
+				PublicDesc:  fmt.Sprintf("can't run golangci-lint: %s", res.Report.Error),
+				PrivateDesc: fmt.Sprintf("can't run golangci-lint: %s, %s", res.Report.Error, runErr),
+			}
+		}
+
+		return nil, &errorutils.InternalError{
+			PublicDesc:  "can't run golangci-lint",
+			PrivateDesc: fmt.Sprintf("can't run golangci-lint: %s, %s", runErr, out),
+		}
 	}
 
 	var res printers.JSONResult
-	rawJSON := []byte(out)
-	if strings.HasPrefix(out, "[") {
-		// old format
-		if err = json.Unmarshal(rawJSON, &res.Issues); err != nil {
-			return nil, fmt.Errorf("can't parse json output '%s' of %s: %s", out, g.Name(), err)
+	if jsonErr := json.Unmarshal(rawJSON, &res); jsonErr != nil {
+		return nil, &errorutils.InternalError{
+			PublicDesc:  "can't run golangci-lint: invalid output json",
+			PrivateDesc: fmt.Sprintf("can't run golangci-lint: can't parse json output %s: %s", out, jsonErr),
 		}
-	} else {
-		if err = json.Unmarshal(rawJSON, &res); err != nil {
-			return nil, fmt.Errorf("can't parse json output '%s' of %s: %s", out, g.Name(), err)
-		}
+	}
+
+	if res.Report != nil && len(res.Report.Warnings) != 0 {
+		analytics.Log(ctx).Warnf("Got golangci-lint warnings: %#v", res.Report.Warnings)
 	}
 
 	var retIssues []result.Issue
@@ -62,6 +75,6 @@ func (g golangciLint) Run(ctx context.Context, exec executors.Executor) (*result
 	}
 	return &result.Result{
 		Issues:     retIssues,
-		ResultJSON: res,
+		ResultJSON: json.RawMessage(rawJSON),
 	}, nil
 }

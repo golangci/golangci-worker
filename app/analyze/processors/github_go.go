@@ -6,7 +6,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"runtime/debug"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/environments"
@@ -15,9 +18,9 @@ import (
 	"github.com/golangci/golangci-worker/app/analyze/linters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/golinters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
-	"github.com/golangci/golangci-worker/app/analyze/linters/result/processors"
 	"github.com/golangci/golangci-worker/app/analyze/reporters"
 	"github.com/golangci/golangci-worker/app/analyze/state"
+	"github.com/golangci/golangci-worker/app/utils/errorutils"
 	"github.com/golangci/golangci-worker/app/utils/github"
 	gh "github.com/google/go-github/github"
 )
@@ -32,12 +35,27 @@ type githubGoConfig struct {
 	state       state.Storage
 }
 
+type JSONDuration time.Duration
+
+type Timing struct {
+	Name     string
+	Duration JSONDuration `json:"DurationMs"`
+}
+
+type Warning struct {
+	Tag  string
+	Text string
+}
+
 type githubGo struct {
 	pr           *gh.PullRequest
 	analysisGUID string
 
 	context *github.Context
 	githubGoConfig
+
+	timings  []Timing
+	warnings []Warning
 }
 
 //nolint:gocyclo
@@ -75,9 +93,7 @@ func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig, ana
 	}
 
 	if cfg.runner == nil {
-		cfg.runner = linters.SimpleRunner{
-			Processors: []processors.Processor{},
-		}
+		cfg.runner = linters.SimpleRunner{}
 	}
 
 	if cfg.state == nil {
@@ -140,40 +156,60 @@ func makeExecutor(ctx context.Context, c *github.Context, patch string) (executo
 	return exec, nil
 }
 
-func (g githubGo) prepareRepo(ctx context.Context) error {
+func (g *githubGo) prepareRepo(ctx context.Context) error {
 	cloneURL := g.pr.GetHead().GetRepo().GetCloneURL() // TODO: get ssh url when need to clone private repo
 	clonePath := "."                                   // Must be already in needed dir
 	ref := g.pr.GetHead().GetRef()
-	if err := g.repoFetcher.Fetch(ctx, cloneURL, ref, clonePath, g.exec); err != nil {
-		return fmt.Errorf("can't fetch git repo: %s", err)
+
+	var err error
+	g.trackTiming("Clone", func() {
+		err = g.repoFetcher.Fetch(ctx, cloneURL, ref, clonePath, g.exec)
+	})
+	if err != nil {
+		return &errorutils.InternalError{
+			PublicDesc:  "can't clone git repo",
+			PrivateDesc: fmt.Sprintf("can't clone git repo: %s", err),
+		}
 	}
 
 	depsPath := path.Join("/app", "ensure_deps.sh")
-	if out, err := g.exec.Run(ctx, "bash", depsPath); err != nil {
-		analytics.Log(ctx).Warnf("Can't ensure deps: %s, %s", err, out)
-	}
-
-	goinstallPath := path.Join("/app", "go_install.sh")
-	if out, err := g.exec.Run(ctx, "bash", goinstallPath); err != nil {
-		analytics.Log(ctx).Warnf("Can't go install: %s, %s", err, out)
+	var out string
+	g.trackTiming("Deps", func() {
+		out, err = g.exec.Run(ctx, "bash", depsPath)
+	})
+	if err != nil {
+		g.publicWarn("prepare", "Can't fetch deps")
+		analytics.Log(ctx).Warnf("Can't fetch deps: %s, %s", err, out)
 	}
 
 	return nil
 }
 
+type workerRes struct {
+	Timings  []Timing  `json:",omitempty"`
+	Warnings []Warning `json:",omitempty"`
+	Error    string    `json:",omitempty"`
+}
+
 type resultJSON struct {
 	Version         int
 	GolangciLintRes interface{}
+	WorkerRes       workerRes
 }
 
-func (g githubGo) updateAnalysisState(ctx context.Context, res *result.Result, status github.Status) {
-	var resJSON *resultJSON
+func (g githubGo) updateAnalysisState(ctx context.Context, res *result.Result, status github.Status, publicError string) {
+	resJSON := &resultJSON{
+		Version: 1,
+		WorkerRes: workerRes{
+			Timings:  g.timings,
+			Warnings: g.warnings,
+			Error:    publicError,
+		},
+	}
+
 	issuesCount := 0
 	if res != nil {
-		resJSON = &resultJSON{
-			Version:         1,
-			GolangciLintRes: res.ResultJSON,
-		}
+		resJSON.GolangciLintRes = res.ResultJSON
 		issuesCount = len(res.Issues)
 	}
 	s := &state.State{
@@ -187,76 +223,128 @@ func (g githubGo) updateAnalysisState(ctx context.Context, res *result.Result, s
 	}
 }
 
-//nolint:gocyclo
-func (g githubGo) processInWorkDir(ctx context.Context) error {
-	status := github.StatusSuccess // Hide all internal errors
-	statusDesc := "No issues found!"
-	var issues []result.Issue
-	var res *result.Result
-	defer func() {
-		ctx = context.Background() // no timeout for state and status saving: it must be durable
+func getGithubStatusForIssues(issues []result.Issue) (github.Status, string) {
+	switch len(issues) {
+	case 0:
+		return github.StatusSuccess, "No issues found!"
+	case 1:
+		return github.StatusFailure, "1 issue found"
+	default:
+		return github.StatusFailure, fmt.Sprintf("%d issues found", len(issues))
+	}
+}
 
-		// update of state must be before commit status update: user can open details link before: race condition
-		g.updateAnalysisState(ctx, res, status)
-		g.setCommitStatus(ctx, status, statusDesc)
+type IgnoredError struct {
+	Status        github.Status
+	StatusDesc    string
+	IsRecoverable bool
+}
+
+func (e IgnoredError) Error() string {
+	return e.StatusDesc
+}
+
+func (g *githubGo) processWithGuaranteedGithubStatus(ctx context.Context) error {
+	res, err := g.work(ctx)
+	analytics.Log(ctx).Infof("timings: %s", g.timings)
+
+	ctx = context.Background() // no timeout for state and status saving: it must be durable
+
+	var status github.Status
+	var statusDesc, publicError string
+	if err != nil {
+		if serr, ok := err.(*IgnoredError); ok {
+			status, statusDesc = serr.Status, serr.StatusDesc
+			if !serr.IsRecoverable {
+				err = nil
+			}
+			// already must have warning, don't set publicError
+		} else if ierr, ok := err.(*errorutils.InternalError); ok {
+			status, statusDesc = github.StatusError, ierr.PublicDesc
+			publicError = statusDesc
+		} else {
+			status, statusDesc = github.StatusError, "Internal error"
+			publicError = statusDesc
+		}
+	} else {
+		status, statusDesc = getGithubStatusForIssues(res.Issues)
+	}
+
+	// update of state must be before commit status update: user can open details link before: race condition
+	g.updateAnalysisState(ctx, res, status, publicError)
+	g.setCommitStatus(ctx, status, statusDesc)
+
+	return err
+}
+
+func (g *githubGo) work(ctx context.Context) (res *result.Result, err error) {
+	defer func() {
+		if rerr := recover(); rerr != nil {
+			err = &errorutils.InternalError{
+				PublicDesc:  "golangci-worker panic-ed",
+				PrivateDesc: fmt.Sprintf("panic occured: %s, %s", rerr, debug.Stack()),
+			}
+		}
 	}()
 
 	prState := strings.ToUpper(g.pr.GetState())
 	if prState == "MERGED" || prState == "CLOSED" {
 		// branch can be deleted: will be an error; no need to analyze
-		analytics.Log(ctx).Warnf("pr %+v is already %s, skip analysis", g.pr, prState)
-		return nil
+		g.publicWarn("process", fmt.Sprintf("Pull Request is already %s, skip analysis", prState))
+		analytics.Log(ctx).Warnf("Pull Request is already %s, skip analysis", prState)
+		return nil, &IgnoredError{
+			Status:        github.StatusSuccess,
+			StatusDesc:    fmt.Sprintf("Pull Request is already %s", strings.ToLower(prState)),
+			IsRecoverable: false,
+		}
 	}
 
-	if err := g.prepareRepo(ctx); err != nil {
-		return fmt.Errorf("can't prepare repo from pr %+v: %s", *g.pr, err)
+	if err = g.prepareRepo(ctx); err != nil {
+		return nil, err // don't wrap error, need to save it's type
 	}
 
-	var err error
-	res, err = g.runner.Run(ctx, g.linters, g.exec)
+	g.trackTiming("Analysis", func() {
+		res, err = g.runner.Run(ctx, g.linters, g.exec)
+	})
 	if err != nil {
-		return err
+		return nil, err // don't wrap error, need to save it's type
 	}
 
-	if res != nil {
-		issues = res.Issues
-	}
-
+	issues := res.Issues
 	analytics.SaveEventProp(ctx, analytics.EventPRChecked, "reportedIssues", len(issues))
 
 	if len(issues) == 0 {
 		analytics.Log(ctx).Infof("Linters found no issues")
 	} else {
-		analytics.Log(ctx).Infof("Linters found next issues: %+v", issues)
+		analytics.Log(ctx).Infof("Linters found %d issues: %+v", len(issues), issues)
 	}
+
 	if err = g.reporter.Report(ctx, g.pr.GetHead().GetSHA(), issues); err != nil {
-		return fmt.Errorf("can't report: %s", err)
+		return nil, &errorutils.InternalError{
+			PublicDesc:  "can't send pull request comments to github",
+			PrivateDesc: fmt.Sprintf("can't send pull request comments to github: %s", err),
+		}
 	}
 
-	switch len(issues) {
-	case 0:
-		return nil // Status is really success
-	case 1:
-		statusDesc = "1 issue found"
-	default:
-		statusDesc = fmt.Sprintf("%d issues found", len(issues))
-	}
-
-	status = github.StatusFailure
-	return nil
+	return res, nil
 }
 
 func (g githubGo) setCommitStatus(ctx context.Context, status github.Status, desc string) {
 	var url string
-	if status == github.StatusFailure || status == github.StatusSuccess {
+	if status == github.StatusFailure || status == github.StatusSuccess || status == github.StatusError {
 		c := g.context
-		url = fmt.Sprintf("https://golangci.com/r/%s/%s/pulls/%d",
-			c.Repo.Owner, c.Repo.Name, g.pr.GetNumber())
+		url = fmt.Sprintf("%s/r/%s/%s/pulls/%d",
+			os.Getenv("WEB_ROOT"), c.Repo.Owner, c.Repo.Name, g.pr.GetNumber())
 	}
 	err := g.client.SetCommitStatus(ctx, g.context, g.pr.GetHead().GetSHA(), status, desc, url)
 	if err != nil {
-		analytics.Log(ctx).Warnf("Can't set commit status: %s", err)
+		g.publicWarn("github", "Can't set github commit status")
+		analytics.Log(ctx).Warnf("Can't set github commit status: %s", err)
 	}
+}
+
+func fromDBTime(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), time.Local)
 }
 
 func (g githubGo) Process(ctx context.Context) error {
@@ -273,6 +361,7 @@ func (g githubGo) Process(ctx context.Context) error {
 	if err != nil {
 		analytics.Log(ctx).Warnf("Can't get current state: %s", err)
 	} else if curState.Status == "sent_to_queue" {
+		g.addTimingFrom("In Queue", fromDBTime(curState.CreatedAt))
 		curState.Status = "processing"
 		if err = g.state.UpdateState(ctx, g.context.Repo.Owner, g.context.Repo.Name, g.analysisGUID, curState); err != nil {
 			analytics.Log(ctx).Warnf("Can't update analysis %s state with setting status to 'processing': %s", g.analysisGUID, err)
@@ -283,5 +372,36 @@ func (g githubGo) Process(ctx context.Context) error {
 	wd := path.Join(g.exec.WorkDir(), "src", "github.com", r.Owner, r.Name)
 	g.exec = g.exec.WithWorkDir(wd) // XXX: clean gopath, but work in subdir of gopath
 
-	return g.processInWorkDir(ctx)
+	return g.processWithGuaranteedGithubStatus(ctx)
+}
+
+func (g *githubGo) trackTiming(name string, f func()) {
+	startedAt := time.Now()
+	f()
+	g.timings = append(g.timings, Timing{
+		Name:     name,
+		Duration: JSONDuration(time.Since(startedAt)),
+	})
+}
+
+func (g *githubGo) addTimingFrom(name string, from time.Time) {
+	g.timings = append(g.timings, Timing{
+		Name:     name,
+		Duration: JSONDuration(time.Since(from)),
+	})
+}
+
+func (g *githubGo) publicWarn(tag string, text string) {
+	g.warnings = append(g.warnings, Warning{
+		Tag:  tag,
+		Text: text,
+	})
+}
+
+func (d JSONDuration) MarshalJSON() ([]byte, error) {
+	return []byte(strconv.Itoa(int(time.Duration(d) / time.Millisecond))), nil
+}
+
+func (d JSONDuration) String() string {
+	return time.Duration(d).String()
 }

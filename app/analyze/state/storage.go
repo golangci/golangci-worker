@@ -2,9 +2,11 @@ package state
 
 import (
 	"context"
+	"time"
 )
 
 type State struct {
+	CreatedAt           time.Time
 	Status              string
 	ReportedIssuesCount int
 	ResultJSON          interface{}

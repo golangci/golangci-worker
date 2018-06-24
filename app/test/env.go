@@ -13,7 +13,7 @@ import (
 
 var initOnce sync.Once
 
-func loadEnv() {
+func LoadEnv() {
 	envNames := []string{".env"}
 	for _, envName := range envNames {
 		fpath := path.Join(fsutils.GetProjectRoot(), envName)
@@ -26,7 +26,7 @@ func loadEnv() {
 
 func Init() {
 	initOnce.Do(func() {
-		loadEnv()
+		LoadEnv()
 	})
 }
 

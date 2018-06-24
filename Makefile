@@ -13,12 +13,9 @@ gen:
 build:
 	go build ./app/cmd/...
 
-install_gometalinter:
-	go get gopkg.in/alecthomas/gometalinter.v2
-	gometalinter.v2 --install
-
 test:
 	go test -v ./...
+	golangci-lint run -v
 
 test_repo:
 	# set env vars PR, REPO
