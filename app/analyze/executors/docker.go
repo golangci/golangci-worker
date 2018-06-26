@@ -1,28 +1,39 @@
 package executors
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/golangci/golangci-worker/app/utils/timeutils"
 )
 
 type Docker struct {
-	mountFromPath, mountToPath string
-	image                      string
-	wd                         string
+	image         string
+	wd            string
+	containerName string
 	*envStore
 }
 
-func NewDocker(mountFromPath, mountToPath string) *Docker {
-	return &Docker{
-		mountFromPath: mountFromPath,
-		mountToPath:   mountToPath,
+func NewDocker(ctx context.Context) (*Docker, error) {
+	d := &Docker{
 		image:         "golangci_executor",
 		envStore:      newEnvStoreNoOS(),
+		wd:            "/app/go",
+		containerName: "golangci_executor",
 	}
+
+	_ = exec.CommandContext(ctx, "docker", "rm", "-f", "-v", d.containerName).Run()
+
+	out, err := exec.CommandContext(ctx, "docker", "run", "-d", "--name", d.containerName, d.image).CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("can't run docker: %s, %s", err, out)
+	}
+
+	return d, nil
 }
 
 var _ Executor = Docker{}
@@ -30,23 +41,30 @@ var _ Executor = Docker{}
 func (d Docker) Run(ctx context.Context, name string, args ...string) (string, error) {
 	// XXX: don't use docker sdk because it's too heavyweight: dep ensure takes minutes on it
 	dockerArgs := []string{
-		"run",
-		"-v", fmt.Sprintf("%s:%s", d.mountFromPath, d.mountToPath),
+		"exec",
+		"-w", d.wd,
 	}
 
 	for _, e := range d.env {
 		dockerArgs = append(dockerArgs, "-e", e)
 	}
 
-	dockerArgs = append(dockerArgs, "--rm", d.image, name)
+	dockerArgs = append(dockerArgs, d.containerName, name)
 	dockerArgs = append(dockerArgs, args...)
-	// TODO: take work dir d.wd into account
 
 	defer timeutils.Track(time.Now(), "docker full execution: docker %v", dockerArgs)
 
 	cmd := exec.CommandContext(ctx, "docker", dockerArgs...)
-	out, err := cmd.CombinedOutput()
-	return string(out), err
+	var stderrBuf bytes.Buffer
+	cmd.Stderr = &stderrBuf
+
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("can't execute command docker %s: %s, %s, %s",
+			sprintArgs(dockerArgs), err, string(out), stderrBuf.String())
+	}
+
+	return string(out), nil
 }
 
 func (d Docker) WithEnv(k, v string) Executor {
@@ -55,7 +73,9 @@ func (d Docker) WithEnv(k, v string) Executor {
 	return dCopy
 }
 
-func (d Docker) Clean() {}
+func (d Docker) Clean() {
+	_ = exec.Command("docker", "rm", "-f", "-v", d.containerName).Run()
+}
 
 func (d Docker) WithWorkDir(wd string) Executor {
 	dCopy := d
@@ -64,5 +84,16 @@ func (d Docker) WithWorkDir(wd string) Executor {
 }
 
 func (d Docker) WorkDir() string {
-	panic("isn't supported") // TODO
+	return d.wd
+}
+
+func (d Docker) CopyFile(ctx context.Context, dst, src string) error {
+	dst = filepath.Join(d.WorkDir(), dst)
+	cmd := exec.CommandContext(ctx, "docker", "cp", src, fmt.Sprintf("%s:%s", d.containerName, dst))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("can't docker cp %s to %s: %s, %s", src, dst, err, out)
+	}
+
+	return nil
 }

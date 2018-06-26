@@ -1,19 +1,19 @@
 # docker build -t golangci_executor -f app/docker/executor.dockerfile .
-FROM heroku/heroku:16
-
-ENV GO_VERSION=1.9.3
-ENV OS=linux
-ENV ARCH=amd64
+FROM golang:1.10
 
 WORKDIR /app
-RUN wget https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz -O - | tar -C /usr/local -xzf -
 
 ENV GOPATH=/app/go
 ENV GOBINPATH=$GOPATH/bin
 ENV PATH=$PATH:/usr/local/go/bin:$GOBINPATH
 
-#RUN wget https://s3-us-west-2.amazonaws.com/golangci-linters/v1/bin.tar.gz -O - | tar -C $GOBINPATH -xzvf -
-COPY bin/bin.tar.gz .
-RUN mkdir -p $GOBINPATH && tar -C $GOBINPATH -xzvf bin.tar.gz && rm bin.tar.gz
+RUN go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+COPY ./app/scripts/ensure_deps.sh /app/ensure_deps.sh
+COPY ./app/scripts/forever_run.sh /app/run.sh
+
+RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+RUN curl https://glide.sh/get | sh
+RUN go get github.com/tools/godep
+RUN go get github.com/kardianos/govendor
 
 CMD ["/app/run.sh"]

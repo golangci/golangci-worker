@@ -3,6 +3,7 @@ package executors
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -62,4 +63,27 @@ func (s TempDirShell) WithWorkDir(wd string) Executor {
 	eCopy := s
 	eCopy.wd = wd
 	return &eCopy
+}
+
+func (s TempDirShell) CopyFile(ctx context.Context, dst, src string) error {
+	dst = filepath.Join(s.WorkDir(), dst)
+
+	from, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("can't open %s: %s", src, err)
+	}
+	defer from.Close()
+
+	to, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		return fmt.Errorf("can't open %s: %s", dst, err)
+	}
+	defer to.Close()
+
+	_, err = io.Copy(to, from)
+	if err != nil {
+		return fmt.Errorf("can't copy from %s to %s: %s", src, dst, err)
+	}
+
+	return nil
 }

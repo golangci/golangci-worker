@@ -110,8 +110,14 @@ func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig, ana
 func makeExecutor(ctx context.Context, c *github.Context, patch string) (executors.Executor, error) {
 	repo := c.Repo
 	var exec executors.Executor
-	const useRemoteShell = true
-	if useRemoteShell {
+	useDockerExecutor := os.Getenv("USE_DOCKER_EXECUTOR") == "1"
+	if useDockerExecutor {
+		var err error
+		exec, err = executors.NewDocker(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("can't build docker executor: %s", err)
+		}
+	} else {
 		s := executors.NewRemoteShell(
 			os.Getenv("REMOTE_SHELL_USER"),
 			os.Getenv("REMOTE_SHELL_HOST"),
@@ -121,33 +127,27 @@ func makeExecutor(ctx context.Context, c *github.Context, patch string) (executo
 			return nil, fmt.Errorf("can't setup temp work dir: %s", err)
 		}
 
-		f, err := ioutil.TempFile("/tmp", "golangci.diff")
-		defer os.Remove(f.Name())
-
-		if err != nil {
-			return nil, fmt.Errorf("can't create temp file for patch: %s", err)
-		}
-		if err = ioutil.WriteFile(f.Name(), []byte(patch), os.ModePerm); err != nil {
-			return nil, fmt.Errorf("can't write patch to temp file %s: %s", f.Name(), err)
-		}
-
-		if err = s.CopyFile(ctx, "changes.patch", f.Name()); err != nil {
-			return nil, fmt.Errorf("can't copy patch file to remote shell: %s", err)
-		}
-
 		exec = s
-	} else {
-		var err error
-		exec, err = executors.NewTempDirShell("gopath")
-		if err != nil {
-			return nil, fmt.Errorf("can't create temp dir shell: %s", err)
-		}
+	}
+
+	f, err := ioutil.TempFile("/tmp", "golangci.diff")
+	defer os.Remove(f.Name())
+
+	if err != nil {
+		return nil, fmt.Errorf("can't create temp file for patch: %s", err)
+	}
+	if err = ioutil.WriteFile(f.Name(), []byte(patch), os.ModePerm); err != nil {
+		return nil, fmt.Errorf("can't write patch to temp file %s: %s", f.Name(), err)
+	}
+
+	if err = exec.CopyFile(ctx, "changes.patch", f.Name()); err != nil {
+		return nil, fmt.Errorf("can't copy patch file to remote shell: %s", err)
 	}
 
 	gopath := exec.WorkDir()
 	wd := path.Join(gopath, "src", "github.com", repo.Owner, repo.Name)
-	if _, err := exec.Run(ctx, "mkdir", "-p", wd); err != nil {
-		return nil, fmt.Errorf("can't create project dir %q: %s", wd, err)
+	if out, err := exec.Run(ctx, "mkdir", "-p", wd); err != nil {
+		return nil, fmt.Errorf("can't create project dir %q: %s, %s", wd, err, out)
 	}
 
 	goEnv := environments.NewGolang(gopath)

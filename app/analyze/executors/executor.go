@@ -11,5 +11,7 @@ type Executor interface {
 	WorkDir() string
 	WithWorkDir(wd string) Executor
 
+	CopyFile(ctx context.Context, dst, src string) error
+
 	Clean()
 }

@@ -96,6 +96,18 @@ func (_mr *MockExecutorMockRecorder) WithWorkDir(arg0 interface{}) *gomock.Call 
 	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "WithWorkDir", reflect.TypeOf((*MockExecutor)(nil).WithWorkDir), arg0)
 }
 
+// CopyFile mocks base method
+func (_m *MockExecutor) CopyFile(ctx context.Context, dst string, src string) error {
+	ret := _m.ctrl.Call(_m, "CopyFile", ctx, dst, src)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CopyFile indicates an expected call of CopyFile
+func (_mr *MockExecutorMockRecorder) CopyFile(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "CopyFile", reflect.TypeOf((*MockExecutor)(nil).CopyFile), arg0, arg1, arg2)
+}
+
 // Clean mocks base method
 func (_m *MockExecutor) Clean() {
 	_m.ctrl.Call(_m, "Clean")
