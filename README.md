@@ -50,6 +50,18 @@ golangci-api is not needed for running and testing golangci-worker. Not running 
 level=warning msg="Can't get current state: bad status code 404"
 ```
 
+### Testing
+To run tests:
+```
+make test
+```
+
+For more realistic testing than `test_repo_fake_github` use in golangci-api repo GitHub WebHook emulator:
+```
+go run app/scripts/emulate_webhook/main.go --repo golangci/golangci-worker --pr 39 --sha fbd0d7bada8a6cfa7adbc58e5901e0d66f7f65b1
+```
+
+
 # Contributing
 See [CONTRIBUTING](https://github.com/golangci/golangci-worker/blob/master/CONTRIBUTING.md).
 
