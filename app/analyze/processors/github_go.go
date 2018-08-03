@@ -157,8 +157,15 @@ func makeExecutor(ctx context.Context, c *github.Context, patch string) (executo
 }
 
 func (g *githubGo) prepareRepo(ctx context.Context) error {
-	cloneURL := g.pr.GetHead().GetRepo().GetCloneURL() // TODO: get ssh url when need to clone private repo
-	clonePath := "."                                   // Must be already in needed dir
+	var cloneURL string
+	if g.pr.Base.Repo.GetPrivate() {
+		cloneURL = fmt.Sprintf("https://%s@github.com/%s/%s.git",
+			g.context.GithubAccessToken, // it's already the private token
+			g.context.Repo.Owner, g.context.Repo.Name)
+	} else {
+		cloneURL = g.pr.GetHead().GetRepo().GetCloneURL()
+	}
+	clonePath := "." // Must be already in needed dir
 	ref := g.pr.GetHead().GetRef()
 
 	var err error
