@@ -41,6 +41,11 @@ var testPR = &gh.PullRequest{
 		Ref: gh.String(testBranch),
 		SHA: gh.String(testSHA),
 	},
+	Base: &gh.PullRequestBranch{
+		Repo: &gh.Repository{
+			Private: gh.Bool(false),
+		},
+	},
 	Number: gh.Int(7),
 }
 var testAnalysisGUID = "test-guid"
@@ -96,7 +101,7 @@ func getFakePatch() (string, error) {
 	return string(patch), err
 }
 
-func getFakeStatusGithubClient(t *testing.T, ctrl *gomock.Controller, status github.Status, statusDesc string) github.Client {
+func getFakeStatusGithubClient(ctrl *gomock.Controller, status github.Status, statusDesc string) github.Client {
 	c := &github.FakeContext
 	gc := github.NewMockClient(ctrl)
 	gc.EXPECT().GetPullRequest(testCtxMatcher, c).Return(testPR, nil)
@@ -168,7 +173,7 @@ func TestSetCommitStatusSuccess(t *testing.T) {
 
 	testProcessor(t, ctrl, githubGoConfig{
 		linters: getFakeLinters(ctrl),
-		client:  getFakeStatusGithubClient(t, ctrl, github.StatusSuccess, "No issues found!"),
+		client:  getFakeStatusGithubClient(ctrl, github.StatusSuccess, "No issues found!"),
 	})
 }
 
@@ -178,7 +183,7 @@ func TestSetCommitStatusFailureOneIssue(t *testing.T) {
 
 	testProcessor(t, ctrl, githubGoConfig{
 		linters: getFakeLinters(ctrl, fakeChangedIssue),
-		client:  getFakeStatusGithubClient(t, ctrl, github.StatusFailure, "1 issue found"),
+		client:  getFakeStatusGithubClient(ctrl, github.StatusFailure, "1 issue found"),
 	})
 }
 
@@ -188,7 +193,7 @@ func TestSetCommitStatusFailureTwoIssues(t *testing.T) {
 
 	testProcessor(t, ctrl, githubGoConfig{
 		linters: getFakeLinters(ctrl, fakeChangedIssues...),
-		client:  getFakeStatusGithubClient(t, ctrl, github.StatusFailure, "2 issues found"),
+		client:  getFakeStatusGithubClient(ctrl, github.StatusFailure, "2 issues found"),
 	})
 }
 
@@ -199,7 +204,7 @@ func TestSetCommitStatusOnReportingError(t *testing.T) {
 	p := getNopedProcessor(t, ctrl, githubGoConfig{
 		linters:  getFakeLinters(ctrl, fakeChangedIssue),
 		reporter: getErroredReporter(ctrl),
-		client:   getFakeStatusGithubClient(t, ctrl, github.StatusError, "can't send pull request comments to github"),
+		client:   getFakeStatusGithubClient(ctrl, github.StatusError, "can't send pull request comments to github"),
 	})
 	assert.Error(t, p.Process(testCtx))
 }
