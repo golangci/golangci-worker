@@ -18,7 +18,10 @@ import (
 
 var processorFactory = processors.NewGithubFactory()
 
-func analyze(ctx context.Context, repoOwner, repoName, githubAccessToken string,
+const statusOk = "ok"
+const statusFail = "fail"
+
+func analyzePR(ctx context.Context, repoOwner, repoName, githubAccessToken string,
 	pullRequestNumber int, APIRequestID string, userID uint, analysisGUID string) error {
 
 	var cancel context.CancelFunc
@@ -27,7 +30,7 @@ func analyze(ctx context.Context, repoOwner, repoName, githubAccessToken string,
 	ctx, cancel = context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
-	t := &task.Task{
+	t := &task.PRAnalysis{
 		Context: github.Context{
 			Repo: github.Repo{
 				Owner: repoOwner,
@@ -59,21 +62,17 @@ func makeContext(ctx context.Context, trackingProps map[string]interface{}) cont
 	return ctx
 }
 
-func analyzeWrapped(ctx context.Context, repoOwner, repoName, githubAccessToken string, pullRequestNumber int, APIRequestID string, userID uint) (err error) {
-	return analyzeWrappedV2(ctx, repoOwner, repoName, githubAccessToken, pullRequestNumber, APIRequestID, userID, "")
-}
-
-func analyzeWrappedV2(ctx context.Context, repoOwner, repoName, githubAccessToken string, pullRequestNumber int, APIRequestID string, userID uint, analysisGUID string) (err error) {
+func analyzePRWrappedV2(ctx context.Context, repoOwner, repoName, githubAccessToken string, pullRequestNumber int, APIRequestID string, userID uint, analysisGUID string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic recovered: %v, %s", r, debug.Stack())
 			logrus.Error(err)
 		}
 	}()
-	return analyzeLogged(ctx, repoOwner, repoName, githubAccessToken, pullRequestNumber, APIRequestID, userID, analysisGUID)
+	return analyzePRLogged(ctx, repoOwner, repoName, githubAccessToken, pullRequestNumber, APIRequestID, userID, analysisGUID)
 }
 
-func analyzeLogged(ctx context.Context, repoOwner, repoName, githubAccessToken string,
+func analyzePRLogged(ctx context.Context, repoOwner, repoName, githubAccessToken string,
 	pullRequestNumber int, APIRequestID string, userID uint, analysisGUID string) error {
 
 	trackingProps := map[string]interface{}{
@@ -88,7 +87,7 @@ func analyzeLogged(ctx context.Context, repoOwner, repoName, githubAccessToken s
 	analytics.Log(ctx).Infof("Starting analysis of %s/%s#%d...", repoOwner, repoName, pullRequestNumber)
 
 	startedAt := time.Now()
-	err := analyze(ctx, repoOwner, repoName, githubAccessToken, pullRequestNumber, APIRequestID, userID, analysisGUID)
+	err := analyzePR(ctx, repoOwner, repoName, githubAccessToken, pullRequestNumber, APIRequestID, userID, analysisGUID)
 
 	duration := time.Since(startedAt)
 	analytics.Log(ctx).Infof("Finished analysis of %s/%s#%d for %s", repoOwner, repoName, pullRequestNumber, duration)
@@ -97,9 +96,9 @@ func analyzeLogged(ctx context.Context, repoOwner, repoName, githubAccessToken s
 		"durationSeconds": int(duration / time.Second),
 	}
 	if err == nil {
-		props["status"] = "ok"
+		props["status"] = statusOk
 	} else {
-		props["status"] = "fail"
+		props["status"] = statusFail
 		props["error"] = err.Error()
 	}
 	analytics.SaveEventProps(ctx, analytics.EventPRChecked, props)
@@ -114,11 +113,55 @@ func analyzeLogged(ctx context.Context, repoOwner, repoName, githubAccessToken s
 	return err
 }
 
+func analyzeRepoWrapped(ctx context.Context, repoName string) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic recovered: %v, %s", r, debug.Stack())
+			logrus.Error(err)
+		}
+	}()
+
+	trackingProps := map[string]interface{}{
+		"repoName": repoName,
+		"provider": "github",
+	}
+	ctx = makeContext(ctx, trackingProps)
+
+	analytics.Log(ctx).Infof("Starting repo analysis of %s...", repoName)
+
+	startedAt := time.Now()
+	err = analyzeRepo(ctx, repoName)
+
+	duration := time.Since(startedAt)
+	analytics.Log(ctx).Infof("Finished repo analysis of %s for %s", repoName, duration)
+
+	props := map[string]interface{}{
+		"durationSeconds": int(duration / time.Second),
+	}
+	if err == nil {
+		props["status"] = statusOk
+	} else {
+		props["status"] = statusFail
+		props["error"] = err.Error()
+	}
+	analytics.SaveEventProps(ctx, analytics.EventRepoAnalyzed, props)
+
+	if err != nil {
+		analytics.Log(ctx).Errorf("repo processing failed: %s", err)
+	}
+
+	return err
+}
+
+func analyzeRepo(ctx context.Context, repoName string) error {
+	return nil
+}
+
 func RegisterTasks() {
 	server := queue.GetServer()
 	err := server.RegisterTasks(map[string]interface{}{
-		"analyze":   analyzeWrapped,
-		"analyzeV2": analyzeWrappedV2,
+		"analyzeV2":   analyzePRWrappedV2,
+		"analyzeRepo": analyzeRepoWrapped,
 	})
 	if err != nil {
 		log.Fatalf("Can't register queue tasks: %s", err)
