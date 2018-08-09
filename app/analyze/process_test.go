@@ -44,11 +44,11 @@ func (tp testProcessor) Process(ctx context.Context) error {
 
 type testProcessorFatory struct {
 	t        *testing.T
-	expTask  *task.Task
+	expTask  *task.PRAnalysis
 	notifyCh chan bool
 }
 
-func (tpf testProcessorFatory) BuildProcessor(ctx context.Context, t *task.Task) (processors.Processor, error) {
+func (tpf testProcessorFatory) BuildProcessor(ctx context.Context, t *task.PRAnalysis) (processors.Processor, error) {
 	assert.Equal(tpf.t, tpf.expTask, t)
 	return testProcessor{
 		notifyCh: tpf.notifyCh,
@@ -56,7 +56,7 @@ func (tpf testProcessorFatory) BuildProcessor(ctx context.Context, t *task.Task)
 }
 
 func TestSendReceiveProcessing(t *testing.T) {
-	task := &task.Task{
+	task := &task.PRAnalysis{
 		Context:      github.FakeContext,
 		APIRequestID: "req_id",
 	}
@@ -76,7 +76,7 @@ func TestSendReceiveProcessing(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	assert.NoError(t, analyzerqueue.Send(task))
+	assert.NoError(t, analyzerqueue.StartPRAnalysis(task))
 
 	select {
 	case <-notifyCh:
@@ -105,7 +105,7 @@ func TestAnalyzeRepo(t *testing.T) {
 		repoOwner, repoName = parts[0], parts[1]
 	}
 
-	err := analyzeLogged(context.Background(), repoOwner, repoName,
+	err := analyzePRLogged(context.Background(), repoOwner, repoName,
 		os.Getenv("TEST_GITHUB_TOKEN"), prNumber, "", userID, "test-guid")
 	assert.NoError(t, err)
 }

@@ -11,6 +11,7 @@ import (
 type EventName string
 
 const EventPRChecked EventName = "PR checked"
+const EventRepoAnalyzed EventName = "Repo analyzed"
 
 type Tracker interface {
 	Track(ctx context.Context, event EventName)

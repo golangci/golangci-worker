@@ -8,7 +8,7 @@ import (
 	"github.com/golangci/golangci-worker/app/utils/queue"
 )
 
-func Send(t *task.Task) error {
+func StartPRAnalysis(t *task.PRAnalysis) error {
 	args := []tasks.Arg{
 		{
 			Type:  "string",
@@ -48,7 +48,29 @@ func Send(t *task.Task) error {
 
 	_, err := queue.GetServer().SendTask(signature)
 	if err != nil {
-		return fmt.Errorf("failed to send the task %v to analyze queue: %s", t, err)
+		return fmt.Errorf("failed to send the pr analysis task %v to analyze queue: %s", t, err)
+	}
+
+	return nil
+}
+
+func StartRepoAnalysis(t *task.RepoAnalysis) error {
+	args := []tasks.Arg{
+		{
+			Type:  "string",
+			Value: t.Name,
+		},
+	}
+	signature := &tasks.Signature{
+		Name:         "analyzeRepo",
+		Args:         args,
+		RetryCount:   3,
+		RetryTimeout: 600, // 600 sec
+	}
+
+	_, err := queue.GetServer().SendTask(signature)
+	if err != nil {
+		return fmt.Errorf("failed to send the repo analysis task %v to analyze queue: %s", t, err)
 	}
 
 	return nil
