@@ -113,7 +113,7 @@ func analyzePRLogged(ctx context.Context, repoOwner, repoName, githubAccessToken
 	return err
 }
 
-func analyzeRepoWrapped(ctx context.Context, repoName string) (err error) {
+func analyzeRepoWrapped(ctx context.Context, repoName, analysisGUID string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic recovered: %v, %s", r, debug.Stack())
@@ -130,7 +130,7 @@ func analyzeRepoWrapped(ctx context.Context, repoName string) (err error) {
 	analytics.Log(ctx).Infof("Starting repo analysis of %s...", repoName)
 
 	startedAt := time.Now()
-	err = analyzeRepo(ctx, repoName)
+	err = analyzeRepo(ctx, repoName, analysisGUID)
 
 	duration := time.Since(startedAt)
 	analytics.Log(ctx).Infof("Finished repo analysis of %s for %s", repoName, duration)
@@ -153,7 +153,7 @@ func analyzeRepoWrapped(ctx context.Context, repoName string) (err error) {
 	return err
 }
 
-func analyzeRepo(ctx context.Context, repoName string) error {
+func analyzeRepo(ctx context.Context, repoName, analysisGUID string) error {
 	return nil
 }
 

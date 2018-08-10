@@ -60,6 +60,10 @@ func StartRepoAnalysis(t *task.RepoAnalysis) error {
 			Type:  "string",
 			Value: t.Name,
 		},
+		{
+			Type:  "string",
+			Value: t.AnalysisGUID,
+		},
 	}
 	signature := &tasks.Signature{
 		Name:         "analyzeRepo",
