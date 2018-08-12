@@ -1,14 +1,14 @@
-package analyzerqueue
+package analyzequeue
 
 import (
 	"fmt"
 
 	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/golangci/golangci-worker/app/analyze/task"
+	"github.com/golangci/golangci-worker/app/analyze/analyzequeue/task"
 	"github.com/golangci/golangci-worker/app/utils/queue"
 )
 
-func StartPRAnalysis(t *task.PRAnalysis) error {
+func SchedulePRAnalysis(t *task.PRAnalysis) error {
 	args := []tasks.Arg{
 		{
 			Type:  "string",
@@ -54,7 +54,7 @@ func StartPRAnalysis(t *task.PRAnalysis) error {
 	return nil
 }
 
-func StartRepoAnalysis(t *task.RepoAnalysis) error {
+func ScheduleRepoAnalysis(t *task.RepoAnalysis) error {
 	args := []tasks.Arg{
 		{
 			Type:  "string",

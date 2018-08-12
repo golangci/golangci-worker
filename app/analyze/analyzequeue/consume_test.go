@@ -1,16 +1,13 @@
-package analyze
+package analyzequeue
 
 import (
 	"context"
-	"os"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/golangci/golangci-worker/app/analyze/analyzerqueue"
+	"github.com/golangci/golangci-worker/app/analyze/analyzequeue/consumers"
+	"github.com/golangci/golangci-worker/app/analyze/analyzequeue/task"
 	"github.com/golangci/golangci-worker/app/analyze/processors"
-	"github.com/golangci/golangci-worker/app/analyze/task"
 	"github.com/golangci/golangci-worker/app/test"
 	"github.com/golangci/golangci-worker/app/utils/github"
 	"github.com/golangci/golangci-worker/app/utils/queue"
@@ -22,14 +19,14 @@ type processorMocker struct {
 }
 
 func (pm processorMocker) restore() {
-	processorFactory = pm.prevProcessorFactory
+	consumers.ProcessorFactory = pm.prevProcessorFactory
 }
 
 func mockProcessor(newProcessorFactory processors.Factory) *processorMocker {
 	ret := &processorMocker{
 		prevProcessorFactory: newProcessorFactory,
 	}
-	processorFactory = newProcessorFactory
+	consumers.ProcessorFactory = newProcessorFactory
 	return ret
 }
 
@@ -54,7 +51,6 @@ func (tpf testProcessorFatory) BuildProcessor(ctx context.Context, t *task.PRAna
 		notifyCh: tpf.notifyCh,
 	}, nil
 }
-
 func TestSendReceiveProcessing(t *testing.T) {
 	task := &task.PRAnalysis{
 		Context:      github.FakeContext,
@@ -76,7 +72,7 @@ func TestSendReceiveProcessing(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	assert.NoError(t, analyzerqueue.StartPRAnalysis(task))
+	assert.NoError(t, SchedulePRAnalysis(task))
 
 	select {
 	case <-notifyCh:
@@ -84,28 +80,4 @@ func TestSendReceiveProcessing(t *testing.T) {
 	case <-time.After(time.Second * 1):
 		t.Fatalf("Timeouted waiting of processing")
 	}
-}
-
-func TestAnalyzeRepo(t *testing.T) {
-	test.MarkAsSlow(t)
-	test.Init()
-
-	prNumber := 1
-	if pr := os.Getenv("PR"); pr != "" {
-		var err error
-		prNumber, err = strconv.Atoi(pr)
-		assert.NoError(t, err)
-	}
-	const userID = 1
-
-	repoOwner := "golangci"
-	repoName := "golangci-worker"
-	if r := os.Getenv("REPO"); r != "" {
-		parts := strings.SplitN(r, "/", 2)
-		repoOwner, repoName = parts[0], parts[1]
-	}
-
-	err := analyzePRLogged(context.Background(), repoOwner, repoName,
-		os.Getenv("TEST_GITHUB_TOKEN"), prNumber, "", userID, "test-guid")
-	assert.NoError(t, err)
 }
