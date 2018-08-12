@@ -8,9 +8,9 @@ import (
 
 	"github.com/golangci/golangci-lint/pkg/printers"
 	"github.com/golangci/golangci-worker/app/analytics"
-	"github.com/golangci/golangci-worker/app/analyze/executors"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
-	"github.com/golangci/golangci-worker/app/utils/errorutils"
+	"github.com/golangci/golangci-worker/app/lib/errorutils"
+	"github.com/golangci/golangci-worker/app/lib/executors"
 )
 
 type golangciLint struct {

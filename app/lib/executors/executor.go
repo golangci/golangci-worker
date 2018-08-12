@@ -2,6 +2,8 @@ package executors
 
 import "context"
 
+//go:generate mockgen -package executors -source executor.go -destination executor_mock.go
+
 type Executor interface {
 	Run(ctx context.Context, name string, args ...string) (string, error)
 

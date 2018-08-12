@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/golangci/golangci-worker/app/analyze/analyzequeue/consumers"
-	"github.com/golangci/golangci-worker/app/utils/queue"
+	"github.com/golangci/golangci-worker/app/lib/queue"
 )
 
 func RegisterTasks() {

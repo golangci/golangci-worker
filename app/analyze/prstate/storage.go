@@ -1,9 +1,11 @@
-package state
+package prstate
 
 import (
 	"context"
 	"time"
 )
+
+//go:generate mockgen -package prstate -source storage.go -destination storage_mock.go
 
 type State struct {
 	CreatedAt           time.Time

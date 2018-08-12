@@ -12,6 +12,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+//go:generate mockgen -package github -source client.go -destination client_mock.go
+
 type Status string
 
 var ErrPRNotFound = errors.New("no such pull request")

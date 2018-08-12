@@ -8,9 +8,9 @@ import (
 	"github.com/golangci/golangci-worker/app/analyze/analyzequeue/consumers"
 	"github.com/golangci/golangci-worker/app/analyze/analyzequeue/task"
 	"github.com/golangci/golangci-worker/app/analyze/processors"
+	"github.com/golangci/golangci-worker/app/lib/github"
+	"github.com/golangci/golangci-worker/app/lib/queue"
 	"github.com/golangci/golangci-worker/app/test"
-	"github.com/golangci/golangci-worker/app/utils/github"
-	"github.com/golangci/golangci-worker/app/utils/queue"
 	"github.com/stretchr/testify/assert"
 )
 

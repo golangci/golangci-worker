@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/golangci/golangci-worker/app/analyze/analyzequeue"
-	"github.com/golangci/golangci-worker/app/utils/queue"
+	"github.com/golangci/golangci-worker/app/lib/queue"
 	"github.com/sirupsen/logrus"
 )
 

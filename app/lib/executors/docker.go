@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/golangci/golangci-worker/app/utils/timeutils"
+	"github.com/golangci/golangci-worker/app/lib/timeutils"
 )
 
 type Docker struct {
@@ -88,7 +88,9 @@ func (d Docker) WorkDir() string {
 }
 
 func (d Docker) CopyFile(ctx context.Context, dst, src string) error {
-	dst = filepath.Join(d.WorkDir(), dst)
+	if !filepath.IsAbs(dst) {
+		dst = filepath.Join(d.WorkDir(), dst)
+	}
 	cmd := exec.CommandContext(ctx, "docker", "cp", src, fmt.Sprintf("%s:%s", d.containerName, dst))
 	out, err := cmd.CombinedOutput()
 	if err != nil {

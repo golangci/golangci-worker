@@ -5,7 +5,7 @@ import (
 
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/golangci/golangci-worker/app/analyze/analyzequeue/task"
-	"github.com/golangci/golangci-worker/app/utils/queue"
+	"github.com/golangci/golangci-worker/app/lib/queue"
 )
 
 func SchedulePRAnalysis(t *task.PRAnalysis) error {

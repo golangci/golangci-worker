@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 
-	"github.com/golangci/golangci-worker/app/analyze/executors"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
+	"github.com/golangci/golangci-worker/app/lib/executors"
 )
 
 type Runner interface {

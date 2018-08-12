@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/golangci/golangci-worker/app/utils/runmode"
+	"github.com/golangci/golangci-worker/app/lib/runmode"
 	"github.com/stvp/rollbar"
 )
 

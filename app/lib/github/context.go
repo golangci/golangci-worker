@@ -2,8 +2,10 @@ package github
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/go-github/github"
+	gh "github.com/google/go-github/github"
 	"golang.org/x/oauth2"
 )
 
@@ -23,6 +25,16 @@ func (c Context) GetClient(ctx context.Context) *github.Client {
 	)
 	tc := oauth2.NewClient(ctx, ts)
 	return github.NewClient(tc)
+}
+
+func (c Context) GetCloneURL(repo *gh.Repository) string {
+	if repo.GetPrivate() {
+		return fmt.Sprintf("https://%s@github.com/%s/%s.git",
+			c.GithubAccessToken, // it's already the private token
+			c.Repo.Owner, c.Repo.Name)
+	}
+
+	return repo.GetCloneURL()
 }
 
 var FakeContext = Context{

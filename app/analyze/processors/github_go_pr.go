@@ -5,83 +5,61 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"runtime/debug"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/golangci/golangci-worker/app/analytics"
-	"github.com/golangci/golangci-worker/app/analyze/environments"
-	"github.com/golangci/golangci-worker/app/analyze/executors"
-	"github.com/golangci/golangci-worker/app/analyze/fetchers"
 	"github.com/golangci/golangci-worker/app/analyze/linters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/golinters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
+	"github.com/golangci/golangci-worker/app/analyze/prstate"
 	"github.com/golangci/golangci-worker/app/analyze/reporters"
-	"github.com/golangci/golangci-worker/app/analyze/state"
-	"github.com/golangci/golangci-worker/app/utils/errorutils"
-	"github.com/golangci/golangci-worker/app/utils/github"
+	"github.com/golangci/golangci-worker/app/lib/errorutils"
+	"github.com/golangci/golangci-worker/app/lib/executors"
+	"github.com/golangci/golangci-worker/app/lib/fetchers"
+	"github.com/golangci/golangci-worker/app/lib/github"
+	"github.com/golangci/golangci-worker/app/lib/goutils/workspaces"
+	"github.com/golangci/golangci-worker/app/lib/httputils"
 	gh "github.com/google/go-github/github"
 )
 
-type githubGoConfig struct {
+type githubGoPRConfig struct {
 	repoFetcher fetchers.Fetcher
 	linters     []linters.Linter
 	runner      linters.Runner
 	reporter    reporters.Reporter
 	exec        executors.Executor
 	client      github.Client
-	state       state.Storage
+	state       prstate.Storage
 }
 
-type JSONDuration time.Duration
-
-type Timing struct {
-	Name     string
-	Duration JSONDuration `json:"DurationMs"`
-}
-
-type Warning struct {
-	Tag  string
-	Text string
-}
-
-type githubGo struct {
+type githubGoPR struct {
 	pr           *gh.PullRequest
 	analysisGUID string
 
 	context *github.Context
-	githubGoConfig
+	gw      *workspaces.Go
 
-	timings  []Timing
-	warnings []Warning
+	githubGoPRConfig
+	resultCollector
 }
 
-//nolint:gocyclo
-func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig, analysisGUID string) (*githubGo, error) {
+func newGithubGoPR(ctx context.Context, c *github.Context, cfg githubGoPRConfig, analysisGUID string) (*githubGoPR, error) {
 	if cfg.client == nil {
 		cfg.client = github.NewMyClient()
 	}
 
 	if cfg.exec == nil {
-		patch, err := cfg.client.GetPullRequestPatch(ctx, c)
+		var err error
+		cfg.exec, err = makeExecutor(ctx)
 		if err != nil {
-			if !github.IsRecoverableError(err) {
-				return nil, err // preserve error
-			}
-			return nil, fmt.Errorf("can't get patch: %s", err)
+			return nil, fmt.Errorf("can't make executor: %s", err)
 		}
-
-		exec, err := makeExecutor(ctx, c, patch)
-		if err != nil {
-			return nil, err
-		}
-		cfg.exec = exec
 	}
 
 	if cfg.repoFetcher == nil {
-		cfg.repoFetcher = fetchers.Git{}
+		cfg.repoFetcher = fetchers.NewGit()
 	}
 
 	if cfg.linters == nil {
@@ -97,80 +75,41 @@ func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig, ana
 	}
 
 	if cfg.state == nil {
-		cfg.state = state.NewAPIStorage()
+		cfg.state = prstate.NewAPIStorage(httputils.GrequestsClient{})
 	}
 
-	return &githubGo{
-		context:        c,
-		githubGoConfig: cfg,
-		analysisGUID:   analysisGUID,
+	return &githubGoPR{
+		context:          c,
+		githubGoPRConfig: cfg,
+		analysisGUID:     analysisGUID,
 	}, nil
 }
 
-func makeExecutor(ctx context.Context, c *github.Context, patch string) (executors.Executor, error) {
-	repo := c.Repo
-	var exec executors.Executor
-	useDockerExecutor := os.Getenv("USE_DOCKER_EXECUTOR") == "1"
-	if useDockerExecutor {
-		var err error
-		exec, err = executors.NewDocker(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("can't build docker executor: %s", err)
-		}
-	} else {
-		s := executors.NewRemoteShell(
-			os.Getenv("REMOTE_SHELL_USER"),
-			os.Getenv("REMOTE_SHELL_HOST"),
-			os.Getenv("REMOTE_SHELL_KEY_FILE_PATH"),
-		)
-		if err := s.SetupTempWorkDir(ctx); err != nil {
-			return nil, fmt.Errorf("can't setup temp work dir: %s", err)
-		}
-
-		exec = s
-	}
-
+func storePatch(ctx context.Context, w *workspaces.Go, patch string, exec executors.Executor) error {
 	f, err := ioutil.TempFile("/tmp", "golangci.diff")
 	defer os.Remove(f.Name())
 
 	if err != nil {
-		return nil, fmt.Errorf("can't create temp file for patch: %s", err)
+		return fmt.Errorf("can't create temp file for patch: %s", err)
 	}
 	if err = ioutil.WriteFile(f.Name(), []byte(patch), os.ModePerm); err != nil {
-		return nil, fmt.Errorf("can't write patch to temp file %s: %s", f.Name(), err)
+		return fmt.Errorf("can't write patch to temp file %s: %s", f.Name(), err)
 	}
 
-	if err = exec.CopyFile(ctx, "changes.patch", f.Name()); err != nil {
-		return nil, fmt.Errorf("can't copy patch file to remote shell: %s", err)
+	if err = exec.CopyFile(ctx, filepath.Join(w.Gopath(), "changes.patch"), f.Name()); err != nil {
+		return fmt.Errorf("can't copy patch file to remote shell: %s", err)
 	}
 
-	gopath := exec.WorkDir()
-	wd := path.Join(gopath, "src", "github.com", repo.Owner, repo.Name)
-	if out, err := exec.Run(ctx, "mkdir", "-p", wd); err != nil {
-		return nil, fmt.Errorf("can't create project dir %q: %s, %s", wd, err, out)
-	}
-
-	goEnv := environments.NewGolang(gopath)
-	goEnv.Setup(exec)
-
-	return exec, nil
+	return nil
 }
 
-func (g *githubGo) prepareRepo(ctx context.Context) error {
-	var cloneURL string
-	if g.pr.Base.Repo.GetPrivate() {
-		cloneURL = fmt.Sprintf("https://%s@github.com/%s/%s.git",
-			g.context.GithubAccessToken, // it's already the private token
-			g.context.Repo.Owner, g.context.Repo.Name)
-	} else {
-		cloneURL = g.pr.GetHead().GetRepo().GetCloneURL()
-	}
-	clonePath := "." // Must be already in needed dir
+func (g *githubGoPR) prepareRepo(ctx context.Context) error {
+	cloneURL := g.context.GetCloneURL(g.pr.GetHead().GetRepo())
 	ref := g.pr.GetHead().GetRef()
 
 	var err error
 	g.trackTiming("Clone", func() {
-		err = g.repoFetcher.Fetch(ctx, cloneURL, ref, clonePath, g.exec)
+		err = g.repoFetcher.Fetch(ctx, cloneURL, ref, g.exec)
 	})
 	if err != nil {
 		return &errorutils.InternalError{
@@ -179,32 +118,18 @@ func (g *githubGo) prepareRepo(ctx context.Context) error {
 		}
 	}
 
-	depsPath := path.Join("/app", "ensure_deps.sh")
-	var out string
 	g.trackTiming("Deps", func() {
-		out, err = g.exec.Run(ctx, "bash", depsPath)
+		err = g.gw.FetchDeps(ctx)
 	})
 	if err != nil {
 		g.publicWarn("prepare", "Can't fetch deps")
-		analytics.Log(ctx).Warnf("Can't fetch deps: %s, %s", err, out)
+		analytics.Log(ctx).Warnf("Can't fetch deps: %s", err)
 	}
 
 	return nil
 }
 
-type workerRes struct {
-	Timings  []Timing  `json:",omitempty"`
-	Warnings []Warning `json:",omitempty"`
-	Error    string    `json:",omitempty"`
-}
-
-type resultJSON struct {
-	Version         int
-	GolangciLintRes interface{}
-	WorkerRes       workerRes
-}
-
-func (g githubGo) updateAnalysisState(ctx context.Context, res *result.Result, status github.Status, publicError string) {
+func (g githubGoPR) updateAnalysisState(ctx context.Context, res *result.Result, status github.Status, publicError string) {
 	resJSON := &resultJSON{
 		Version: 1,
 		WorkerRes: workerRes{
@@ -219,7 +144,7 @@ func (g githubGo) updateAnalysisState(ctx context.Context, res *result.Result, s
 		resJSON.GolangciLintRes = res.ResultJSON
 		issuesCount = len(res.Issues)
 	}
-	s := &state.State{
+	s := &prstate.State{
 		Status:              "processed/" + string(status),
 		ReportedIssuesCount: issuesCount,
 		ResultJSON:          resJSON,
@@ -241,17 +166,7 @@ func getGithubStatusForIssues(issues []result.Issue) (github.Status, string) {
 	}
 }
 
-type IgnoredError struct {
-	Status        github.Status
-	StatusDesc    string
-	IsRecoverable bool
-}
-
-func (e IgnoredError) Error() string {
-	return e.StatusDesc
-}
-
-func (g *githubGo) processWithGuaranteedGithubStatus(ctx context.Context) error {
+func (g *githubGoPR) processWithGuaranteedGithubStatus(ctx context.Context) error {
 	res, err := g.work(ctx)
 	analytics.Log(ctx).Infof("timings: %s", g.timings)
 
@@ -284,7 +199,7 @@ func (g *githubGo) processWithGuaranteedGithubStatus(ctx context.Context) error 
 	return err
 }
 
-func (g *githubGo) work(ctx context.Context) (res *result.Result, err error) {
+func (g *githubGoPR) work(ctx context.Context) (res *result.Result, err error) {
 	defer func() {
 		if rerr := recover(); rerr != nil {
 			err = &errorutils.InternalError{
@@ -336,7 +251,7 @@ func (g *githubGo) work(ctx context.Context) (res *result.Result, err error) {
 	return res, nil
 }
 
-func (g githubGo) setCommitStatus(ctx context.Context, status github.Status, desc string) {
+func (g githubGoPR) setCommitStatus(ctx context.Context, status github.Status, desc string) {
 	var url string
 	if status == github.StatusFailure || status == github.StatusSuccess || status == github.StatusError {
 		c := g.context
@@ -350,14 +265,27 @@ func (g githubGo) setCommitStatus(ctx context.Context, status github.Status, des
 	}
 }
 
-func fromDBTime(t time.Time) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), time.Local)
-}
-
-func (g githubGo) Process(ctx context.Context) error {
+func (g githubGoPR) Process(ctx context.Context) error {
 	defer g.exec.Clean()
 
-	var err error
+	g.gw = workspaces.NewGo(g.exec)
+	if err := g.gw.Setup(ctx, "github.com", g.context.Repo.Owner, g.context.Repo.Name); err != nil {
+		return fmt.Errorf("can't setup go workspace: %s", err)
+	}
+	g.exec = g.gw.Executor()
+
+	patch, err := g.client.GetPullRequestPatch(ctx, g.context)
+	if err != nil {
+		if !github.IsRecoverableError(err) {
+			return err // preserve error
+		}
+		return fmt.Errorf("can't get patch: %s", err)
+	}
+
+	if err = storePatch(ctx, g.gw, patch, g.exec); err != nil {
+		return fmt.Errorf("can't store patch: %s", err)
+	}
+
 	g.pr, err = g.client.GetPullRequest(ctx, g.context)
 	if err != nil {
 		return fmt.Errorf("can't get pull request: %s", err)
@@ -375,40 +303,5 @@ func (g githubGo) Process(ctx context.Context) error {
 		}
 	}
 
-	r := g.context.Repo
-	wd := path.Join(g.exec.WorkDir(), "src", "github.com", r.Owner, r.Name)
-	g.exec = g.exec.WithWorkDir(wd) // XXX: clean gopath, but work in subdir of gopath
-
 	return g.processWithGuaranteedGithubStatus(ctx)
-}
-
-func (g *githubGo) trackTiming(name string, f func()) {
-	startedAt := time.Now()
-	f()
-	g.timings = append(g.timings, Timing{
-		Name:     name,
-		Duration: JSONDuration(time.Since(startedAt)),
-	})
-}
-
-func (g *githubGo) addTimingFrom(name string, from time.Time) {
-	g.timings = append(g.timings, Timing{
-		Name:     name,
-		Duration: JSONDuration(time.Since(from)),
-	})
-}
-
-func (g *githubGo) publicWarn(tag string, text string) {
-	g.warnings = append(g.warnings, Warning{
-		Tag:  tag,
-		Text: text,
-	})
-}
-
-func (d JSONDuration) MarshalJSON() ([]byte, error) {
-	return []byte(strconv.Itoa(int(time.Duration(d) / time.Millisecond))), nil
-}
-
-func (d JSONDuration) String() string {
-	return time.Duration(d).String()
 }
