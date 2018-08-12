@@ -1,6 +1,6 @@
 package task
 
-import "github.com/golangci/golangci-worker/app/utils/github"
+import "github.com/golangci/golangci-worker/app/lib/github"
 
 type PRAnalysis struct {
 	github.Context

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/golangci/golangci-worker/app/utils/runmode"
+	"github.com/golangci/golangci-worker/app/lib/runmode"
 	"github.com/sirupsen/logrus"
 )
 

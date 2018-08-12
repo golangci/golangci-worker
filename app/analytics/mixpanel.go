@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/dukex/mixpanel"
-	"github.com/golangci/golangci-worker/app/utils/runmode"
+	"github.com/golangci/golangci-worker/app/lib/runmode"
 )
 
 var mixpanelClient mixpanel.Mixpanel

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/golangci/golangci-worker/app/utils/fsutils"
+	"github.com/golangci/golangci-worker/app/lib/fsutils"
 	"github.com/joho/godotenv"
 )
 

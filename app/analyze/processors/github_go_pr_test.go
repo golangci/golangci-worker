@@ -12,14 +12,14 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/golangci/golangci-worker/app/analytics"
-	"github.com/golangci/golangci-worker/app/analyze/executors"
-	"github.com/golangci/golangci-worker/app/analyze/fetchers"
 	"github.com/golangci/golangci-worker/app/analyze/linters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
+	"github.com/golangci/golangci-worker/app/analyze/prstate"
 	"github.com/golangci/golangci-worker/app/analyze/reporters"
-	"github.com/golangci/golangci-worker/app/analyze/state"
+	"github.com/golangci/golangci-worker/app/lib/executors"
+	"github.com/golangci/golangci-worker/app/lib/fetchers"
+	"github.com/golangci/golangci-worker/app/lib/github"
 	"github.com/golangci/golangci-worker/app/test"
-	"github.com/golangci/golangci-worker/app/utils/github"
 	gh "github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
 )
@@ -62,7 +62,7 @@ func getFakeLinters(ctrl *gomock.Controller, issues ...result.Issue) []linters.L
 
 func getNopFetcher(ctrl *gomock.Controller) fetchers.Fetcher {
 	f := fetchers.NewMockFetcher(ctrl)
-	f.EXPECT().Fetch(testCtxMatcher, "", testBranch, ".", any).Return(nil)
+	f.EXPECT().Fetch(testCtxMatcher, "", testBranch, any).Return(nil)
 	return f
 }
 
@@ -78,10 +78,10 @@ func getErroredReporter(ctrl *gomock.Controller) reporters.Reporter {
 	return r
 }
 
-func getNopState(ctrl *gomock.Controller) state.Storage {
-	r := state.NewMockStorage(ctrl)
+func getNopState(ctrl *gomock.Controller) prstate.Storage {
+	r := prstate.NewMockStorage(ctrl)
 	r.EXPECT().UpdateState(any, any, any, any, any).AnyTimes().Return(nil)
-	r.EXPECT().GetState(any, any, any, any).AnyTimes().Return(&state.State{
+	r.EXPECT().GetState(any, any, any, any).AnyTimes().Return(&prstate.State{
 		Status: "sent_to_queue",
 	}, nil)
 	return r
@@ -92,16 +92,20 @@ func getNopExecutor(ctrl *gomock.Controller) executors.Executor {
 	e.EXPECT().WorkDir().Return("").AnyTimes()
 	e.EXPECT().WithWorkDir(any).Return(e).AnyTimes()
 	e.EXPECT().Run(testCtxMatcher, any, any).Return("", nil).AnyTimes()
+	e.EXPECT().Run(testCtxMatcher, any, any, any).Return("", nil).AnyTimes()
 	e.EXPECT().Clean().AnyTimes()
+	e.EXPECT().SetEnv(any, any).AnyTimes()
+	e.EXPECT().CopyFile(any, any, any).Return(nil)
 	return e
 }
 
-func getFakePatch() (string, error) {
+func getFakePatch(t *testing.T) string {
 	patch, err := ioutil.ReadFile(fmt.Sprintf("test/%d.patch", github.FakeContext.PullRequestNumber))
-	return string(patch), err
+	assert.Nil(t, err)
+	return string(patch)
 }
 
-func getFakeStatusGithubClient(ctrl *gomock.Controller, status github.Status, statusDesc string) github.Client {
+func getFakeStatusGithubClient(t *testing.T, ctrl *gomock.Controller, status github.Status, statusDesc string) github.Client {
 	c := &github.FakeContext
 	gc := github.NewMockClient(ctrl)
 	gc.EXPECT().GetPullRequest(testCtxMatcher, c).Return(testPR, nil)
@@ -110,7 +114,7 @@ func getFakeStatusGithubClient(ctrl *gomock.Controller, status github.Status, st
 		github.StatusPending, "GolangCI is reviewing your Pull Request...", "").
 		Return(nil)
 
-	gc.EXPECT().GetPullRequestPatch(any, any).AnyTimes().Return(getFakePatch())
+	gc.EXPECT().GetPullRequestPatch(any, any).AnyTimes().Return(getFakePatch(t), nil)
 
 	test.Init()
 	url := fmt.Sprintf("%s/r/%s/%s/pulls/%d", os.Getenv("WEB_ROOT"), c.Repo.Owner, c.Repo.Name, testPR.GetNumber())
@@ -119,20 +123,20 @@ func getFakeStatusGithubClient(ctrl *gomock.Controller, status github.Status, st
 	return gc
 }
 
-func getNopGithubClient(ctrl *gomock.Controller) github.Client {
+func getNopGithubClient(t *testing.T, ctrl *gomock.Controller) github.Client {
 	c := &github.FakeContext
 
 	gc := github.NewMockClient(ctrl)
 	gc.EXPECT().CreateReview(any, any, any).AnyTimes()
 	gc.EXPECT().GetPullRequest(testCtxMatcher, c).AnyTimes().Return(testPR, nil)
-	gc.EXPECT().GetPullRequestPatch(any, any).AnyTimes().Return(getFakePatch())
+	gc.EXPECT().GetPullRequestPatch(any, any).AnyTimes().Return(getFakePatch(t))
 	gc.EXPECT().SetCommitStatus(any, any, testSHA, any, any, any).AnyTimes()
 	return gc
 }
 
-func fillWithNops(ctrl *gomock.Controller, cfg *githubGoPRConfig) {
+func fillWithNops(t *testing.T, ctrl *gomock.Controller, cfg *githubGoPRConfig) {
 	if cfg.client == nil {
-		cfg.client = getNopGithubClient(ctrl)
+		cfg.client = getNopGithubClient(t, ctrl)
 	}
 	if cfg.exec == nil {
 		cfg.exec = getNopExecutor(ctrl)
@@ -152,7 +156,7 @@ func fillWithNops(ctrl *gomock.Controller, cfg *githubGoPRConfig) {
 }
 
 func getNopedProcessor(t *testing.T, ctrl *gomock.Controller, cfg githubGoPRConfig) *githubGoPR {
-	fillWithNops(ctrl, &cfg)
+	fillWithNops(t, ctrl, &cfg)
 
 	p, err := newGithubGoPR(testCtx, &github.FakeContext, cfg, testAnalysisGUID)
 	assert.NoError(t, err)
@@ -173,7 +177,7 @@ func TestSetCommitStatusSuccess(t *testing.T) {
 
 	testProcessor(t, ctrl, githubGoPRConfig{
 		linters: getFakeLinters(ctrl),
-		client:  getFakeStatusGithubClient(ctrl, github.StatusSuccess, "No issues found!"),
+		client:  getFakeStatusGithubClient(t, ctrl, github.StatusSuccess, "No issues found!"),
 	})
 }
 
@@ -183,7 +187,7 @@ func TestSetCommitStatusFailureOneIssue(t *testing.T) {
 
 	testProcessor(t, ctrl, githubGoPRConfig{
 		linters: getFakeLinters(ctrl, fakeChangedIssue),
-		client:  getFakeStatusGithubClient(ctrl, github.StatusFailure, "1 issue found"),
+		client:  getFakeStatusGithubClient(t, ctrl, github.StatusFailure, "1 issue found"),
 	})
 }
 
@@ -193,7 +197,7 @@ func TestSetCommitStatusFailureTwoIssues(t *testing.T) {
 
 	testProcessor(t, ctrl, githubGoPRConfig{
 		linters: getFakeLinters(ctrl, fakeChangedIssues...),
-		client:  getFakeStatusGithubClient(ctrl, github.StatusFailure, "2 issues found"),
+		client:  getFakeStatusGithubClient(t, ctrl, github.StatusFailure, "2 issues found"),
 	})
 }
 
@@ -204,7 +208,8 @@ func TestSetCommitStatusOnReportingError(t *testing.T) {
 	p := getNopedProcessor(t, ctrl, githubGoPRConfig{
 		linters:  getFakeLinters(ctrl, fakeChangedIssue),
 		reporter: getErroredReporter(ctrl),
-		client:   getFakeStatusGithubClient(ctrl, github.StatusError, "can't send pull request comments to github"),
+		client: getFakeStatusGithubClient(t, ctrl,
+			github.StatusError, "can't send pull request comments to github"),
 	})
 	assert.Error(t, p.Process(testCtx))
 }
@@ -221,7 +226,8 @@ func getRealisticTestProcessor(ctx context.Context, t *testing.T, ctrl *gomock.C
 		},
 	}
 	gc := github.NewMockClient(ctrl)
-	gc.EXPECT().GetPullRequest(testCtxMatcher, c).Return(pr, nil)
+	gc.EXPECT().GetPullRequest(testCtxMatcher, c).Return(pr, nil).AnyTimes()
+	gc.EXPECT().GetPullRequestPatch(any, any).AnyTimes().Return(getFakePatch(t), nil)
 	gc.EXPECT().SetCommitStatus(any, any, any, any, any, any).AnyTimes()
 
 	exec, err := executors.NewTempDirShell("gopath")

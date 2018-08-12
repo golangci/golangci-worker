@@ -7,7 +7,7 @@ import (
 
 	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
-	"github.com/golangci/golangci-worker/app/utils/github"
+	"github.com/golangci/golangci-worker/app/lib/github"
 	gh "github.com/google/go-github/github"
 )
 

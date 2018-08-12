@@ -6,7 +6,7 @@ import (
 
 	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/analyzequeue/task"
-	"github.com/golangci/golangci-worker/app/utils/github"
+	"github.com/golangci/golangci-worker/app/lib/github"
 )
 
 type Factory interface {
