@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/golangci/golangci-worker/app/analytics"
-	"github.com/golangci/golangci-worker/app/analyze/task"
+	"github.com/golangci/golangci-worker/app/analyze/analyzequeue/task"
 	"github.com/golangci/golangci-worker/app/utils/github"
 )
 
