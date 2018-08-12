@@ -130,7 +130,7 @@ func getNopGithubClient(ctrl *gomock.Controller) github.Client {
 	return gc
 }
 
-func fillWithNops(ctrl *gomock.Controller, cfg *githubGoConfig) {
+func fillWithNops(ctrl *gomock.Controller, cfg *githubGoPRConfig) {
 	if cfg.client == nil {
 		cfg.client = getNopGithubClient(ctrl)
 	}
@@ -151,16 +151,16 @@ func fillWithNops(ctrl *gomock.Controller, cfg *githubGoConfig) {
 	}
 }
 
-func getNopedProcessor(t *testing.T, ctrl *gomock.Controller, cfg githubGoConfig) *githubGo {
+func getNopedProcessor(t *testing.T, ctrl *gomock.Controller, cfg githubGoPRConfig) *githubGoPR {
 	fillWithNops(ctrl, &cfg)
 
-	p, err := newGithubGo(testCtx, &github.FakeContext, cfg, testAnalysisGUID)
+	p, err := newGithubGoPR(testCtx, &github.FakeContext, cfg, testAnalysisGUID)
 	assert.NoError(t, err)
 
 	return p
 }
 
-func testProcessor(t *testing.T, ctrl *gomock.Controller, cfg githubGoConfig) {
+func testProcessor(t *testing.T, ctrl *gomock.Controller, cfg githubGoPRConfig) {
 	p := getNopedProcessor(t, ctrl, cfg)
 
 	err := p.Process(testCtx)
@@ -171,7 +171,7 @@ func TestSetCommitStatusSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	testProcessor(t, ctrl, githubGoConfig{
+	testProcessor(t, ctrl, githubGoPRConfig{
 		linters: getFakeLinters(ctrl),
 		client:  getFakeStatusGithubClient(ctrl, github.StatusSuccess, "No issues found!"),
 	})
@@ -181,7 +181,7 @@ func TestSetCommitStatusFailureOneIssue(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	testProcessor(t, ctrl, githubGoConfig{
+	testProcessor(t, ctrl, githubGoPRConfig{
 		linters: getFakeLinters(ctrl, fakeChangedIssue),
 		client:  getFakeStatusGithubClient(ctrl, github.StatusFailure, "1 issue found"),
 	})
@@ -191,7 +191,7 @@ func TestSetCommitStatusFailureTwoIssues(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	testProcessor(t, ctrl, githubGoConfig{
+	testProcessor(t, ctrl, githubGoPRConfig{
 		linters: getFakeLinters(ctrl, fakeChangedIssues...),
 		client:  getFakeStatusGithubClient(ctrl, github.StatusFailure, "2 issues found"),
 	})
@@ -201,7 +201,7 @@ func TestSetCommitStatusOnReportingError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	p := getNopedProcessor(t, ctrl, githubGoConfig{
+	p := getNopedProcessor(t, ctrl, githubGoPRConfig{
 		linters:  getFakeLinters(ctrl, fakeChangedIssue),
 		reporter: getErroredReporter(ctrl),
 		client:   getFakeStatusGithubClient(ctrl, github.StatusError, "can't send pull request comments to github"),
@@ -209,7 +209,7 @@ func TestSetCommitStatusOnReportingError(t *testing.T) {
 	assert.Error(t, p.Process(testCtx))
 }
 
-func getRealisticTestProcessor(ctx context.Context, t *testing.T, ctrl *gomock.Controller) *githubGo {
+func getRealisticTestProcessor(ctx context.Context, t *testing.T, ctrl *gomock.Controller) *githubGoPR {
 	c := getTestingRepo(t)
 	cloneURL := fmt.Sprintf("git@github.com:%s/%s.git", c.Repo.Owner, c.Repo.Name)
 	pr := &gh.PullRequest{
@@ -227,14 +227,14 @@ func getRealisticTestProcessor(ctx context.Context, t *testing.T, ctrl *gomock.C
 	exec, err := executors.NewTempDirShell("gopath")
 	assert.NoError(t, err)
 
-	cfg := githubGoConfig{
+	cfg := githubGoPRConfig{
 		exec:     exec,
 		runner:   linters.SimpleRunner{},
 		reporter: getNopReporter(ctrl),
 		client:   gc,
 	}
 
-	p, err := newGithubGo(ctx, c, cfg, testAnalysisGUID)
+	p, err := newGithubGoPR(ctx, c, cfg, testAnalysisGUID)
 	assert.NoError(t, err)
 
 	return p
@@ -283,7 +283,7 @@ func getTestingRepo(t *testing.T) *github.Context {
 	return c
 }
 
-func getTestProcessorWithFakeGithub(ctx context.Context, t *testing.T, ctrl *gomock.Controller) *githubGo {
+func getTestProcessorWithFakeGithub(ctx context.Context, t *testing.T, ctrl *gomock.Controller) *githubGoPR {
 	c := getTestingRepo(t)
 
 	realGc := github.NewMyClient()
@@ -297,12 +297,12 @@ func getTestProcessorWithFakeGithub(ctx context.Context, t *testing.T, ctrl *gom
 	gc.EXPECT().GetPullRequest(testCtxMatcher, c).Return(pr, nil)
 	gc.EXPECT().SetCommitStatus(any, any, any, any, any, any).AnyTimes()
 
-	cfg := githubGoConfig{
+	cfg := githubGoPRConfig{
 		reporter: getNopReporter(ctrl),
 		client:   gc,
 	}
 
-	p, err := newGithubGo(ctx, c, cfg, testAnalysisGUID)
+	p, err := newGithubGoPR(ctx, c, cfg, testAnalysisGUID)
 	assert.NoError(t, err)
 
 	return p

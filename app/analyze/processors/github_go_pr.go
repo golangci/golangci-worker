@@ -25,7 +25,7 @@ import (
 	gh "github.com/google/go-github/github"
 )
 
-type githubGoConfig struct {
+type githubGoPRConfig struct {
 	repoFetcher fetchers.Fetcher
 	linters     []linters.Linter
 	runner      linters.Runner
@@ -47,19 +47,19 @@ type Warning struct {
 	Text string
 }
 
-type githubGo struct {
+type githubGoPR struct {
 	pr           *gh.PullRequest
 	analysisGUID string
 
 	context *github.Context
-	githubGoConfig
+	githubGoPRConfig
 
 	timings  []Timing
 	warnings []Warning
 }
 
 //nolint:gocyclo
-func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig, analysisGUID string) (*githubGo, error) {
+func newGithubGoPR(ctx context.Context, c *github.Context, cfg githubGoPRConfig, analysisGUID string) (*githubGoPR, error) {
 	if cfg.client == nil {
 		cfg.client = github.NewMyClient()
 	}
@@ -100,10 +100,10 @@ func newGithubGo(ctx context.Context, c *github.Context, cfg githubGoConfig, ana
 		cfg.state = state.NewAPIStorage()
 	}
 
-	return &githubGo{
-		context:        c,
-		githubGoConfig: cfg,
-		analysisGUID:   analysisGUID,
+	return &githubGoPR{
+		context:          c,
+		githubGoPRConfig: cfg,
+		analysisGUID:     analysisGUID,
 	}, nil
 }
 
@@ -156,7 +156,7 @@ func makeExecutor(ctx context.Context, c *github.Context, patch string) (executo
 	return exec, nil
 }
 
-func (g *githubGo) prepareRepo(ctx context.Context) error {
+func (g *githubGoPR) prepareRepo(ctx context.Context) error {
 	var cloneURL string
 	if g.pr.Base.Repo.GetPrivate() {
 		cloneURL = fmt.Sprintf("https://%s@github.com/%s/%s.git",
@@ -204,7 +204,7 @@ type resultJSON struct {
 	WorkerRes       workerRes
 }
 
-func (g githubGo) updateAnalysisState(ctx context.Context, res *result.Result, status github.Status, publicError string) {
+func (g githubGoPR) updateAnalysisState(ctx context.Context, res *result.Result, status github.Status, publicError string) {
 	resJSON := &resultJSON{
 		Version: 1,
 		WorkerRes: workerRes{
@@ -251,7 +251,7 @@ func (e IgnoredError) Error() string {
 	return e.StatusDesc
 }
 
-func (g *githubGo) processWithGuaranteedGithubStatus(ctx context.Context) error {
+func (g *githubGoPR) processWithGuaranteedGithubStatus(ctx context.Context) error {
 	res, err := g.work(ctx)
 	analytics.Log(ctx).Infof("timings: %s", g.timings)
 
@@ -284,7 +284,7 @@ func (g *githubGo) processWithGuaranteedGithubStatus(ctx context.Context) error 
 	return err
 }
 
-func (g *githubGo) work(ctx context.Context) (res *result.Result, err error) {
+func (g *githubGoPR) work(ctx context.Context) (res *result.Result, err error) {
 	defer func() {
 		if rerr := recover(); rerr != nil {
 			err = &errorutils.InternalError{
@@ -336,7 +336,7 @@ func (g *githubGo) work(ctx context.Context) (res *result.Result, err error) {
 	return res, nil
 }
 
-func (g githubGo) setCommitStatus(ctx context.Context, status github.Status, desc string) {
+func (g githubGoPR) setCommitStatus(ctx context.Context, status github.Status, desc string) {
 	var url string
 	if status == github.StatusFailure || status == github.StatusSuccess || status == github.StatusError {
 		c := g.context
@@ -354,7 +354,7 @@ func fromDBTime(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), time.Local)
 }
 
-func (g githubGo) Process(ctx context.Context) error {
+func (g githubGoPR) Process(ctx context.Context) error {
 	defer g.exec.Clean()
 
 	var err error
@@ -382,7 +382,7 @@ func (g githubGo) Process(ctx context.Context) error {
 	return g.processWithGuaranteedGithubStatus(ctx)
 }
 
-func (g *githubGo) trackTiming(name string, f func()) {
+func (g *githubGoPR) trackTiming(name string, f func()) {
 	startedAt := time.Now()
 	f()
 	g.timings = append(g.timings, Timing{
@@ -391,14 +391,14 @@ func (g *githubGo) trackTiming(name string, f func()) {
 	})
 }
 
-func (g *githubGo) addTimingFrom(name string, from time.Time) {
+func (g *githubGoPR) addTimingFrom(name string, from time.Time) {
 	g.timings = append(g.timings, Timing{
 		Name:     name,
 		Duration: JSONDuration(time.Since(from)),
 	})
 }
 
-func (g *githubGo) publicWarn(tag string, text string) {
+func (g *githubGoPR) publicWarn(tag string, text string) {
 	g.warnings = append(g.warnings, Warning{
 		Tag:  tag,
 		Text: text,

@@ -20,7 +20,7 @@ func NewGithubFactory() Factory {
 }
 
 func (gf githubFactory) BuildProcessor(ctx context.Context, t *task.PRAnalysis) (Processor, error) {
-	p, err := newGithubGo(ctx, &t.Context, githubGoConfig{}, t.AnalysisGUID)
+	p, err := newGithubGoPR(ctx, &t.Context, githubGoPRConfig{}, t.AnalysisGUID)
 	if err != nil {
 		if !github.IsRecoverableError(err) {
 			analytics.Log(ctx).Warnf("%s: skip current task: use nop processor", err)
