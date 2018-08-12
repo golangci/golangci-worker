@@ -7,7 +7,7 @@ ENV GOPATH=/app/go
 ENV GOBINPATH=$GOPATH/bin
 ENV PATH=$PATH:/usr/local/go/bin:$GOBINPATH
 
-RUN go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b $GOPATH/bin v1.9.3
 COPY ./app/scripts/ensure_deps.sh /app/ensure_deps.sh
 COPY ./app/scripts/forever_run.sh /app/run.sh
 

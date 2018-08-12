@@ -63,7 +63,11 @@ func newGithubGoPR(ctx context.Context, c *github.Context, cfg githubGoPRConfig,
 	}
 
 	if cfg.linters == nil {
-		cfg.linters = golinters.GetSupportedLinters()
+		cfg.linters = []linters.Linter{
+			golinters.GolangciLint{
+				PatchPath: "../../../../changes.patch",
+			},
+		}
 	}
 
 	if cfg.reporter == nil {
@@ -185,7 +189,7 @@ func (g *githubGoPR) processWithGuaranteedGithubStatus(ctx context.Context) erro
 			status, statusDesc = github.StatusError, ierr.PublicDesc
 			publicError = statusDesc
 		} else {
-			status, statusDesc = github.StatusError, "Internal error"
+			status, statusDesc = github.StatusError, internalError
 			publicError = statusDesc
 		}
 	} else {
@@ -295,9 +299,9 @@ func (g githubGoPR) Process(ctx context.Context) error {
 	curState, err := g.state.GetState(ctx, g.context.Repo.Owner, g.context.Repo.Name, g.analysisGUID)
 	if err != nil {
 		analytics.Log(ctx).Warnf("Can't get current state: %s", err)
-	} else if curState.Status == "sent_to_queue" {
+	} else if curState.Status == statusSentToQueue {
 		g.addTimingFrom("In Queue", fromDBTime(curState.CreatedAt))
-		curState.Status = "processing"
+		curState.Status = statusProcessing
 		if err = g.state.UpdateState(ctx, g.context.Repo.Owner, g.context.Repo.Name, g.analysisGUID, curState); err != nil {
 			analytics.Log(ctx).Warnf("Can't update analysis %s state with setting status to 'processing': %s", g.analysisGUID, err)
 		}

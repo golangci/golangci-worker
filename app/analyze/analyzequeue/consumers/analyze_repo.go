@@ -2,8 +2,10 @@ package consumers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/golangci/golangci-worker/app/analytics"
+	"github.com/golangci/golangci-worker/app/analyze/processors"
 )
 
 type AnalyzeRepo struct {
@@ -30,5 +32,10 @@ func (c AnalyzeRepo) Consume(ctx context.Context, repoName, analysisGUID, branch
 }
 
 func (c AnalyzeRepo) analyzeRepo(ctx context.Context, repoName, analysisGUID, branch string) error {
-	return nil
+	p, err := processors.NewGithubGoRepo(ctx, processors.GithubGoRepoConfig{}, analysisGUID, repoName, branch)
+	if err != nil {
+		return fmt.Errorf("can't make github go repo proessor: %s", err)
+	}
+
+	return p.Process(ctx)
 }
