@@ -13,27 +13,30 @@ import (
 	"github.com/golangci/golangci-worker/app/lib/executors"
 )
 
-type golangciLint struct {
+type GolangciLint struct {
+	PatchPath string
 }
 
-func (g golangciLint) Name() string {
+func (g GolangciLint) Name() string {
 	return "golangci-lint"
 }
 
-func (g golangciLint) Run(ctx context.Context, exec executors.Executor) (*result.Result, error) {
+func (g GolangciLint) Run(ctx context.Context, exec executors.Executor) (*result.Result, error) {
 	exec = exec.WithEnv("GOLANGCI_COM_RUN", "1")
 
-	// TODO: check golangci-lint warnings in stderr
-	out, runErr := exec.Run(ctx,
-		g.Name(),
+	args := []string{
 		"run",
 		"--out-format=json",
 		"--issues-exit-code=0",
 		"--print-welcome=false",
 		"--deadline=5m",
-		"--new-from-patch=../../../../changes.patch",
-		filepath.Join(exec.WorkDir(), "..."),
-	)
+	}
+	if g.PatchPath != "" {
+		args = append(args, "--new-from-patch="+g.PatchPath)
+	}
+	args = append(args, filepath.Join(exec.WorkDir(), "..."))
+
+	out, runErr := exec.Run(ctx, g.Name(), args...)
 	rawJSON := []byte(out)
 
 	if runErr != nil {

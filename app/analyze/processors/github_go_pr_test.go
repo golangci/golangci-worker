@@ -82,7 +82,7 @@ func getNopState(ctrl *gomock.Controller) prstate.Storage {
 	r := prstate.NewMockStorage(ctrl)
 	r.EXPECT().UpdateState(any, any, any, any, any).AnyTimes().Return(nil)
 	r.EXPECT().GetState(any, any, any, any).AnyTimes().Return(&prstate.State{
-		Status: "sent_to_queue",
+		Status: statusSentToQueue,
 	}, nil)
 	return r
 }
