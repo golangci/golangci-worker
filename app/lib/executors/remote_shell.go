@@ -84,7 +84,9 @@ func (s RemoteShell) Run(ctx context.Context, name string, srcArgs ...string) (s
 }
 
 func (s RemoteShell) CopyFile(ctx context.Context, dst, src string) error {
-	dst = filepath.Join(s.WorkDir(), dst)
+	if !filepath.IsAbs(dst) {
+		dst = filepath.Join(s.WorkDir(), dst)
+	}
 	out, err := exec.CommandContext(ctx, "scp",
 		"-i", s.keyFilePath,
 		src,
