@@ -2,11 +2,13 @@ package repostate
 
 import (
 	"context"
+	"time"
 )
 
 //go:generate mockgen -package repostate -source storage.go -destination storage_mock.go
 
 type State struct {
+	CreatedAt  time.Time
 	Status     string
 	ResultJSON interface{}
 }

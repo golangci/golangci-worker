@@ -12,4 +12,5 @@ type PRAnalysis struct {
 type RepoAnalysis struct {
 	Name         string
 	AnalysisGUID string
+	Branch       string
 }
