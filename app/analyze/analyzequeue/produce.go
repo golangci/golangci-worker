@@ -64,6 +64,10 @@ func ScheduleRepoAnalysis(t *task.RepoAnalysis) error {
 			Type:  "string",
 			Value: t.AnalysisGUID,
 		},
+		{
+			Type:  "string",
+			Value: t.Branch,
+		},
 	}
 	signature := &tasks.Signature{
 		Name:         "analyzeRepo",
