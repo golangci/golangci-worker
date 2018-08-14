@@ -65,7 +65,7 @@ func (c AnalyzePR) Consume(ctx context.Context, repoOwner, repoName, githubAcces
 		}
 
 		if err = p.Process(ctx); err != nil {
-			return fmt.Errorf("can't process task %+v: %s", t, err)
+			return fmt.Errorf("can't process pr analysis of %+v: %s", t, err)
 		}
 
 		return nil

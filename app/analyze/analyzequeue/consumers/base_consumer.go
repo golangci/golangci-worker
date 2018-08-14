@@ -38,7 +38,7 @@ func (c baseConsumer) wrapConsuming(ctx context.Context, f func() error) (err er
 	analytics.Log(ctx).Infof("Finished consuming of %s for %s", c.eventName, duration)
 
 	if err != nil {
-		analytics.Log(ctx).Errorf("processing failed: %s", err)
+		analytics.Log(ctx).Errorf("processing of %q task failed: %s", c.eventName, err)
 	}
 
 	if c.needSendToAnalytics {

@@ -22,8 +22,10 @@ func NewAnalyzeRepo() *AnalyzeRepo {
 
 func (c AnalyzeRepo) Consume(ctx context.Context, repoName, analysisGUID, branch string) error {
 	ctx = c.prepareContext(ctx, map[string]interface{}{
-		"repoName": repoName,
-		"provider": "github",
+		"repoName":     repoName,
+		"provider":     "github",
+		"analysisGUID": analysisGUID,
+		branch:         branch,
 	})
 
 	return c.wrapConsuming(ctx, func() error {
@@ -37,5 +39,9 @@ func (c AnalyzeRepo) analyzeRepo(ctx context.Context, repoName, analysisGUID, br
 		return fmt.Errorf("can't make github go repo proessor: %s", err)
 	}
 
-	return p.Process(ctx)
+	if err := p.Process(ctx); err != nil {
+		return fmt.Errorf("can't process repo analysis for %s and branch %s: %s", repoName, branch, err)
+	}
+
+	return nil
 }
