@@ -259,7 +259,7 @@ func (g githubGoPR) setCommitStatus(ctx context.Context, status github.Status, d
 	var url string
 	if status == github.StatusFailure || status == github.StatusSuccess || status == github.StatusError {
 		c := g.context
-		url = fmt.Sprintf("%s/r/%s/%s/pulls/%d",
+		url = fmt.Sprintf("%s/r/github.com/%s/%s/pulls/%d",
 			os.Getenv("WEB_ROOT"), c.Repo.Owner, c.Repo.Name, g.pr.GetNumber())
 	}
 	err := g.client.SetCommitStatus(ctx, g.context, g.pr.GetHead().GetSHA(), status, desc, url)
