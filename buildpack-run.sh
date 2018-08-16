@@ -19,10 +19,10 @@ chmod 0600 .ssh/remote_shell_key
 
 echo added ssh keys
 
-echo installing linters binaries
+echo installing binaries
 mkdir -p bin
 wget https://s3-us-west-2.amazonaws.com/golangci-linters/v1/bin.tar.gz -O - | tar -C bin -xzvf -
 
 mkdir -p .profile.d
 echo 'PATH=$PATH:/app/src/github.com/golangci/golangci-worker/bin' > .profile.d/golangci.sh
-echo successfuly installed linters binaries
+echo successfuly installed binaries
