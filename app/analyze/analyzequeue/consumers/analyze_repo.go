@@ -28,9 +28,12 @@ func (c AnalyzeRepo) Consume(ctx context.Context, repoName, analysisGUID, branch
 		branch:         branch,
 	})
 
-	return c.wrapConsuming(ctx, func() error {
+	_ = c.wrapConsuming(ctx, func() error {
 		return c.analyzeRepo(ctx, repoName, analysisGUID, branch)
 	})
+
+	// Don't return error to machinery: we will retry this task ourself from golangci-api
+	return nil
 }
 
 func (c AnalyzeRepo) analyzeRepo(ctx context.Context, repoName, analysisGUID, branch string) error {
