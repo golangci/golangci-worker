@@ -145,7 +145,12 @@ func (g *GithubGoRepo) processWithGuaranteedGithubStatus(ctx context.Context) er
 	var publicError string
 	if err != nil {
 		if ierr, ok := err.(*errorutils.InternalError); ok {
-			publicError = ierr.PublicDesc
+			if strings.Contains(ierr.PrivateDesc, noGoFileToAnalyzeErr) {
+				publicError = noGoFilesToAnalyzeMessage
+				err = nil
+			} else {
+				publicError = ierr.PublicDesc
+			}
 		} else {
 			publicError = internalError
 		}
