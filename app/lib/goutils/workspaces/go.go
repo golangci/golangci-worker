@@ -29,10 +29,12 @@ func NewGo(exec executors.Executor, infoFetcher repoinfo.Fetcher) *Go {
 
 func (w *Go) Setup(ctx context.Context, repo *fetchers.Repo, projectPathParts ...string) error {
 	repoInfo, err := w.infoFetcher.Fetch(ctx, repo, w.exec)
-	if err != nil {
+	// continue if no remote branch: it should be reported later (or not reported if PR is closed/merged)
+	if err != nil && !strings.Contains(err.Error(), "Could not find remote branch") {
 		return errors.Wrap(err, "failed to fetch repo info")
 	}
-	if repoInfo.CanonicalImportPath != "" {
+
+	if repoInfo != nil && repoInfo.CanonicalImportPath != "" {
 		newProjectPathParts := strings.Split(repoInfo.CanonicalImportPath, "/")
 		analytics.Log(ctx).Infof("change canonical project path: %s -> %s", projectPathParts, newProjectPathParts)
 		projectPathParts = newProjectPathParts
