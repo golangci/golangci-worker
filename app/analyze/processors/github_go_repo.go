@@ -201,7 +201,13 @@ func (g *GithubGoRepo) work(ctx context.Context) (res *result.Result, err error)
 func (g GithubGoRepo) Process(ctx context.Context) error {
 	defer g.exec.Clean()
 
-	g.gw = workspaces.NewGo(g.exec, g.infoFetcher)
+	tempExec, err := makeExecutor(ctx)
+	if err != nil {
+		return fmt.Errorf("can't make temp executor: %s", err)
+	}
+	defer tempExec.Clean()
+
+	g.gw = workspaces.NewGo(g.exec, tempExec, g.infoFetcher)
 	if err := g.gw.Setup(ctx, g.getRepo(), "github.com", g.repo.Owner, g.repo.Name); err != nil {
 		return fmt.Errorf("can't setup go workspace: %s", err)
 	}

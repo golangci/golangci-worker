@@ -15,20 +15,21 @@ import (
 )
 
 type Go struct {
-	gopath      string
-	exec        executors.Executor
-	infoFetcher repoinfo.Fetcher
+	gopath         string
+	exec, tempExec executors.Executor
+	infoFetcher    repoinfo.Fetcher
 }
 
-func NewGo(exec executors.Executor, infoFetcher repoinfo.Fetcher) *Go {
+func NewGo(exec, tempExec executors.Executor, infoFetcher repoinfo.Fetcher) *Go {
 	return &Go{
 		exec:        exec,
+		tempExec:    tempExec,
 		infoFetcher: infoFetcher,
 	}
 }
 
 func (w *Go) Setup(ctx context.Context, repo *fetchers.Repo, projectPathParts ...string) error {
-	repoInfo, err := w.infoFetcher.Fetch(ctx, repo)
+	repoInfo, err := w.infoFetcher.Fetch(ctx, repo, w.tempExec)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch repo info")
 	}

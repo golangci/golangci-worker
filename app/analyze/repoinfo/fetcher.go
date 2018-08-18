@@ -15,7 +15,7 @@ import (
 type Info info.Info
 
 type Fetcher interface {
-	Fetch(ctx context.Context, repo *fetchers.Repo) (*Info, error)
+	Fetch(ctx context.Context, repo *fetchers.Repo, exec executors.Executor) (*Info, error)
 }
 
 type CloningFetcher struct {
@@ -28,15 +28,9 @@ func NewCloningFetcher(repoFetcher fetchers.Fetcher) *CloningFetcher {
 	}
 }
 
-func (f CloningFetcher) Fetch(ctx context.Context, repo *fetchers.Repo) (*Info, error) {
-	exec, err := executors.NewTempDirShell("repoinfo_cloning_fetcher")
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create executor")
-	}
-	defer exec.Clean()
-
+func (f CloningFetcher) Fetch(ctx context.Context, repo *fetchers.Repo, exec executors.Executor) (*Info, error) {
 	// fetch into the current dir
-	if err = f.repoFetcher.Fetch(ctx, repo, exec); err != nil {
+	if err := f.repoFetcher.Fetch(ctx, repo, exec); err != nil {
 		return nil, errors.Wrapf(err, "failed to fetch repo ref %q by url %q", repo.Ref, repo.CloneURL)
 	}
 

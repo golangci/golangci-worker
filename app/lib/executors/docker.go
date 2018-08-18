@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/satori/go.uuid"
+
 	"github.com/golangci/golangci-worker/app/lib/timeutils"
 )
 
@@ -23,7 +25,7 @@ func NewDocker(ctx context.Context) (*Docker, error) {
 		image:         "golangci_executor",
 		envStore:      newEnvStoreNoOS(),
 		wd:            "/app/go",
-		containerName: "golangci_executor",
+		containerName: "golangci_executor_" + uuid.NewV4().String(),
 	}
 
 	_ = exec.CommandContext(ctx, "docker", "rm", "-f", "-v", d.containerName).Run()

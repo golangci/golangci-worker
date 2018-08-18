@@ -75,7 +75,7 @@ func getNopReporter(ctrl *gomock.Controller) reporters.Reporter {
 
 func getNopInfoFetcher(ctrl *gomock.Controller) repoinfo.Fetcher {
 	r := repoinfo.NewMockFetcher(ctrl)
-	r.EXPECT().Fetch(testCtxMatcher, any).AnyTimes().Return(&repoinfo.Info{}, nil)
+	r.EXPECT().Fetch(testCtxMatcher, any, any).AnyTimes().Return(&repoinfo.Info{}, nil)
 	return r
 }
 

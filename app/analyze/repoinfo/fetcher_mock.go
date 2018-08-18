@@ -6,6 +6,7 @@ package repoinfo
 import (
 	context "context"
 	gomock "github.com/golang/mock/gomock"
+	executors "github.com/golangci/golangci-worker/app/lib/executors"
 	fetchers "github.com/golangci/golangci-worker/app/lib/fetchers"
 	reflect "reflect"
 )
@@ -34,14 +35,14 @@ func (_m *MockFetcher) EXPECT() *MockFetcherMockRecorder {
 }
 
 // Fetch mocks base method
-func (_m *MockFetcher) Fetch(ctx context.Context, repo *fetchers.Repo) (*Info, error) {
-	ret := _m.ctrl.Call(_m, "Fetch", ctx, repo)
+func (_m *MockFetcher) Fetch(ctx context.Context, repo *fetchers.Repo, exec executors.Executor) (*Info, error) {
+	ret := _m.ctrl.Call(_m, "Fetch", ctx, repo, exec)
 	ret0, _ := ret[0].(*Info)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Fetch indicates an expected call of Fetch
-func (_mr *MockFetcherMockRecorder) Fetch(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Fetch", reflect.TypeOf((*MockFetcher)(nil).Fetch), arg0, arg1)
+func (_mr *MockFetcherMockRecorder) Fetch(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Fetch", reflect.TypeOf((*MockFetcher)(nil).Fetch), arg0, arg1, arg2)
 }
