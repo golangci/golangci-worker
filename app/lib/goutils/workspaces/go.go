@@ -15,21 +15,20 @@ import (
 )
 
 type Go struct {
-	gopath         string
-	exec, tempExec executors.Executor
-	infoFetcher    repoinfo.Fetcher
+	gopath      string
+	exec        executors.Executor
+	infoFetcher repoinfo.Fetcher
 }
 
-func NewGo(exec, tempExec executors.Executor, infoFetcher repoinfo.Fetcher) *Go {
+func NewGo(exec executors.Executor, infoFetcher repoinfo.Fetcher) *Go {
 	return &Go{
 		exec:        exec,
-		tempExec:    tempExec,
 		infoFetcher: infoFetcher,
 	}
 }
 
 func (w *Go) Setup(ctx context.Context, repo *fetchers.Repo, projectPathParts ...string) error {
-	repoInfo, err := w.infoFetcher.Fetch(ctx, repo, w.tempExec)
+	repoInfo, err := w.infoFetcher.Fetch(ctx, repo, w.exec)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch repo info")
 	}
@@ -37,6 +36,10 @@ func (w *Go) Setup(ctx context.Context, repo *fetchers.Repo, projectPathParts ..
 		newProjectPathParts := strings.Split(repoInfo.CanonicalImportPath, "/")
 		analytics.Log(ctx).Infof("change canonical project path: %s -> %s", projectPathParts, newProjectPathParts)
 		projectPathParts = newProjectPathParts
+	}
+
+	if _, err := w.exec.Run(ctx, "rm", "-r", "*"); err != nil {
+		return errors.Wrap(err, "failed to cleanup after repo info fetcher")
 	}
 
 	gopath := w.exec.WorkDir()

@@ -296,13 +296,7 @@ func (g githubGoPR) Process(ctx context.Context) error {
 		return fmt.Errorf("can't get pull request: %s", err)
 	}
 
-	tempExec, err := makeExecutor(ctx)
-	if err != nil {
-		return fmt.Errorf("can't make temp executor: %s", err)
-	}
-	defer tempExec.Clean()
-
-	g.gw = workspaces.NewGo(g.exec, tempExec, g.infoFetcher)
+	g.gw = workspaces.NewGo(g.exec, g.infoFetcher)
 	if err = g.gw.Setup(ctx, g.getRepo(), "github.com", g.context.Repo.Owner, g.context.Repo.Name); err != nil {
 		return fmt.Errorf("can't setup go workspace: %s", err)
 	}
