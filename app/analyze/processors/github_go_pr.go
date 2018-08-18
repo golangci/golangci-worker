@@ -199,7 +199,7 @@ func (g *githubGoPR) processWithGuaranteedGithubStatus(ctx context.Context) erro
 			}
 			// already must have warning, don't set publicError
 		} else if ierr, ok := err.(*errorutils.InternalError); ok {
-			if strings.Contains(ierr.PrivateDesc, noGoFileToAnalyzeErr) {
+			if strings.Contains(ierr.PrivateDesc, noGoFilesToAnalyzeErr) {
 				status, statusDesc = github.StatusSuccess, noGoFilesToAnalyzeMessage
 				err = nil
 			} else {

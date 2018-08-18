@@ -8,5 +8,5 @@ const (
 	statusProcessed   = "processed"
 
 	noGoFilesToAnalyzeMessage = "No Go files to analyze"
-	noGoFileToAnalyzeErr      = "no go files to analyze"
+	noGoFilesToAnalyzeErr     = "no go files to analyze"
 )
