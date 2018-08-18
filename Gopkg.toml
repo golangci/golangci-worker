@@ -57,6 +57,14 @@
   branch = "master"
   name = "golang.org/x/oauth2"
 
+[[constraint]]
+  branch = "master"
+  name = "github.com/golangci/getrepoinfo"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/golangci/golangci-lint"
+
 [prune]
   go-tests = true
   unused-packages = true

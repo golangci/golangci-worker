@@ -4,23 +4,40 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
+	"github.com/golangci/golangci-worker/app/analytics"
+	"github.com/golangci/golangci-worker/app/analyze/repoinfo"
 	"github.com/golangci/golangci-worker/app/lib/executors"
+	"github.com/golangci/golangci-worker/app/lib/fetchers"
 	"github.com/golangci/golangci-worker/app/lib/goutils/environments"
+	"github.com/pkg/errors"
 )
 
 type Go struct {
-	gopath string
-	exec   executors.Executor
+	gopath      string
+	exec        executors.Executor
+	infoFetcher repoinfo.Fetcher
 }
 
-func NewGo(exec executors.Executor) *Go {
+func NewGo(exec executors.Executor, infoFetcher repoinfo.Fetcher) *Go {
 	return &Go{
-		exec: exec,
+		exec:        exec,
+		infoFetcher: infoFetcher,
 	}
 }
 
-func (w *Go) Setup(ctx context.Context, projectPathParts ...string) error {
+func (w *Go) Setup(ctx context.Context, repo *fetchers.Repo, projectPathParts ...string) error {
+	repoInfo, err := w.infoFetcher.Fetch(ctx, repo)
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch repo info")
+	}
+	if repoInfo.CanonicalImportPath != "" {
+		newProjectPathParts := strings.Split(repoInfo.CanonicalImportPath, "/")
+		analytics.Log(ctx).Infof("change canonical project path: %s -> %s", projectPathParts, newProjectPathParts)
+		projectPathParts = newProjectPathParts
+	}
+
 	gopath := w.exec.WorkDir()
 	wdParts := []string{gopath, "src"}
 	wdParts = append(wdParts, projectPathParts...)

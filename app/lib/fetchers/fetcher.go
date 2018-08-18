@@ -9,5 +9,5 @@ import (
 //go:generate mockgen -package fetchers -source fetcher.go -destination fetcher_mock.go
 
 type Fetcher interface {
-	Fetch(ctx context.Context, url, ref string, exec executors.Executor) error
+	Fetch(ctx context.Context, repo *Repo, exec executors.Executor) error
 }

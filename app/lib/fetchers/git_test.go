@@ -15,10 +15,12 @@ func TestGitOnTestRepo(t *testing.T) {
 	defer exec.Clean()
 	g := NewGit()
 
-	ref := "test-branch"
-	cloneURL := "git@github.com:golangci/test.git"
+	repo := &Repo{
+		Ref:      "test-branch",
+		CloneURL: "git@github.com:golangci/test.git",
+	}
 
-	err = g.Fetch(context.Background(), cloneURL, ref, exec)
+	err = g.Fetch(context.Background(), repo, exec)
 	assert.NoError(t, err)
 
 	files, err := ioutil.ReadDir(exec.WorkDir())

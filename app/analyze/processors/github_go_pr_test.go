@@ -15,6 +15,7 @@ import (
 	"github.com/golangci/golangci-worker/app/analyze/linters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
 	"github.com/golangci/golangci-worker/app/analyze/prstate"
+	"github.com/golangci/golangci-worker/app/analyze/repoinfo"
 	"github.com/golangci/golangci-worker/app/analyze/reporters"
 	"github.com/golangci/golangci-worker/app/lib/executors"
 	"github.com/golangci/golangci-worker/app/lib/fetchers"
@@ -62,13 +63,19 @@ func getFakeLinters(ctrl *gomock.Controller, issues ...result.Issue) []linters.L
 
 func getNopFetcher(ctrl *gomock.Controller) fetchers.Fetcher {
 	f := fetchers.NewMockFetcher(ctrl)
-	f.EXPECT().Fetch(testCtxMatcher, "", testBranch, any).Return(nil)
+	f.EXPECT().Fetch(testCtxMatcher, any, any).Return(nil)
 	return f
 }
 
 func getNopReporter(ctrl *gomock.Controller) reporters.Reporter {
 	r := reporters.NewMockReporter(ctrl)
 	r.EXPECT().Report(testCtxMatcher, any, any).AnyTimes().Return(nil)
+	return r
+}
+
+func getNopInfoFetcher(ctrl *gomock.Controller) repoinfo.Fetcher {
+	r := repoinfo.NewMockFetcher(ctrl)
+	r.EXPECT().Fetch(testCtxMatcher, any).AnyTimes().Return(&repoinfo.Info{}, nil)
 	return r
 }
 
@@ -146,6 +153,9 @@ func fillWithNops(t *testing.T, ctrl *gomock.Controller, cfg *githubGoPRConfig) 
 	}
 	if cfg.repoFetcher == nil {
 		cfg.repoFetcher = getNopFetcher(ctrl)
+	}
+	if cfg.infoFetcher == nil {
+		cfg.infoFetcher = getNopInfoFetcher(ctrl)
 	}
 	if cfg.reporter == nil {
 		cfg.reporter = getNopReporter(ctrl)
