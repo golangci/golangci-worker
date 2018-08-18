@@ -40,7 +40,7 @@ func (w *Go) Setup(ctx context.Context, repo *fetchers.Repo, projectPathParts ..
 		projectPathParts = newProjectPathParts
 	}
 
-	if _, err := w.exec.Run(ctx, "rm", "-r", "*"); err != nil {
+	if _, err := w.exec.Run(ctx, "rm", "-rf", "*"); err != nil {
 		return errors.Wrap(err, "failed to cleanup after repo info fetcher")
 	}
 
