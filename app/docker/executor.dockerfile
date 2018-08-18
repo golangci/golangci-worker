@@ -15,5 +15,6 @@ RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 RUN curl https://glide.sh/get | sh
 RUN go get github.com/tools/godep
 RUN go get github.com/kardianos/govendor
+RUN go get github.com/golangci/getrepoinfo/cmd/getrepoinfo
 
 CMD ["/app/run.sh"]

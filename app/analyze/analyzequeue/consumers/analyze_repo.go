@@ -25,7 +25,7 @@ func (c AnalyzeRepo) Consume(ctx context.Context, repoName, analysisGUID, branch
 		"repoName":     repoName,
 		"provider":     "github",
 		"analysisGUID": analysisGUID,
-		branch:         branch,
+		"branch":       branch,
 	})
 
 	_ = c.wrapConsuming(ctx, func() error {

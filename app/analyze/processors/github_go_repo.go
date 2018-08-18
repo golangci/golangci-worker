@@ -11,6 +11,7 @@ import (
 	"github.com/golangci/golangci-worker/app/analyze/linters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/golinters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
+	"github.com/golangci/golangci-worker/app/analyze/repoinfo"
 	"github.com/golangci/golangci-worker/app/analyze/repostate"
 	"github.com/golangci/golangci-worker/app/lib/errorutils"
 	"github.com/golangci/golangci-worker/app/lib/executors"
@@ -22,6 +23,7 @@ import (
 
 type GithubGoRepoConfig struct {
 	repoFetcher fetchers.Fetcher
+	infoFetcher repoinfo.Fetcher
 	linters     []linters.Linter
 	runner      linters.Runner
 	exec        executors.Executor
@@ -60,6 +62,10 @@ func NewGithubGoRepo(ctx context.Context, cfg GithubGoRepoConfig, analysisGUID, 
 		cfg.repoFetcher = fetchers.NewGit()
 	}
 
+	if cfg.infoFetcher == nil {
+		cfg.infoFetcher = repoinfo.NewCloningFetcher(cfg.repoFetcher)
+	}
+
 	if cfg.linters == nil {
 		cfg.linters = []linters.Linter{
 			golinters.GolangciLint{},
@@ -82,12 +88,17 @@ func NewGithubGoRepo(ctx context.Context, cfg GithubGoRepoConfig, analysisGUID, 
 	}, nil
 }
 
-func (g *GithubGoRepo) prepareRepo(ctx context.Context) error {
-	cloneURL := fmt.Sprintf("https://github.com/%s/%s.git", g.repo.Owner, g.repo.Name)
+func (g *GithubGoRepo) getRepo() *fetchers.Repo {
+	return &fetchers.Repo{
+		CloneURL: fmt.Sprintf("https://github.com/%s/%s.git", g.repo.Owner, g.repo.Name),
+		Ref:      g.branch,
+	}
+}
 
+func (g *GithubGoRepo) prepareRepo(ctx context.Context) error {
 	var err error
 	g.trackTiming("Clone", func() {
-		err = g.repoFetcher.Fetch(ctx, cloneURL, g.branch, g.exec)
+		err = g.repoFetcher.Fetch(ctx, g.getRepo(), g.exec)
 	})
 	if err != nil {
 		return &errorutils.InternalError{
@@ -190,8 +201,8 @@ func (g *GithubGoRepo) work(ctx context.Context) (res *result.Result, err error)
 func (g GithubGoRepo) Process(ctx context.Context) error {
 	defer g.exec.Clean()
 
-	g.gw = workspaces.NewGo(g.exec)
-	if err := g.gw.Setup(ctx, "github.com", g.repo.Owner, g.repo.Name); err != nil {
+	g.gw = workspaces.NewGo(g.exec, g.infoFetcher)
+	if err := g.gw.Setup(ctx, g.getRepo(), "github.com", g.repo.Owner, g.repo.Name); err != nil {
 		return fmt.Errorf("can't setup go workspace: %s", err)
 	}
 	g.exec = g.gw.Executor()

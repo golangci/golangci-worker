@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"runtime/debug"
 	"strings"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/golangci/golangci-worker/app/analyze/linters/golinters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
 	"github.com/golangci/golangci-worker/app/analyze/prstate"
+	"github.com/golangci/golangci-worker/app/analyze/repoinfo"
 	"github.com/golangci/golangci-worker/app/analyze/reporters"
 	"github.com/golangci/golangci-worker/app/lib/errorutils"
 	"github.com/golangci/golangci-worker/app/lib/executors"
@@ -24,8 +24,13 @@ import (
 	gh "github.com/google/go-github/github"
 )
 
+const (
+	patchPath = "../changes.patch"
+)
+
 type githubGoPRConfig struct {
 	repoFetcher fetchers.Fetcher
+	infoFetcher repoinfo.Fetcher
 	linters     []linters.Linter
 	runner      linters.Runner
 	reporter    reporters.Reporter
@@ -62,10 +67,14 @@ func newGithubGoPR(ctx context.Context, c *github.Context, cfg githubGoPRConfig,
 		cfg.repoFetcher = fetchers.NewGit()
 	}
 
+	if cfg.infoFetcher == nil {
+		cfg.infoFetcher = repoinfo.NewCloningFetcher(cfg.repoFetcher)
+	}
+
 	if cfg.linters == nil {
 		cfg.linters = []linters.Linter{
 			golinters.GolangciLint{
-				PatchPath: "../../../../changes.patch",
+				PatchPath: patchPath,
 			},
 		}
 	}
@@ -89,7 +98,7 @@ func newGithubGoPR(ctx context.Context, c *github.Context, cfg githubGoPRConfig,
 	}, nil
 }
 
-func storePatch(ctx context.Context, w *workspaces.Go, patch string, exec executors.Executor) error {
+func storePatch(ctx context.Context, patch string, exec executors.Executor) error {
 	f, err := ioutil.TempFile("/tmp", "golangci.diff")
 	defer os.Remove(f.Name())
 
@@ -100,20 +109,24 @@ func storePatch(ctx context.Context, w *workspaces.Go, patch string, exec execut
 		return fmt.Errorf("can't write patch to temp file %s: %s", f.Name(), err)
 	}
 
-	if err = exec.CopyFile(ctx, filepath.Join(w.Gopath(), "changes.patch"), f.Name()); err != nil {
-		return fmt.Errorf("can't copy patch file to remote shell: %s", err)
+	if err = exec.CopyFile(ctx, patchPath, f.Name()); err != nil {
+		return fmt.Errorf("can't copy patch file: %s", err)
 	}
 
 	return nil
 }
 
-func (g *githubGoPR) prepareRepo(ctx context.Context) error {
-	cloneURL := g.context.GetCloneURL(g.pr.GetHead().GetRepo())
-	ref := g.pr.GetHead().GetRef()
+func (g githubGoPR) getRepo() *fetchers.Repo {
+	return &fetchers.Repo{
+		CloneURL: g.context.GetCloneURL(g.pr.GetHead().GetRepo()),
+		Ref:      g.pr.GetHead().GetRef(),
+	}
+}
 
+func (g *githubGoPR) prepareRepo(ctx context.Context) error {
 	var err error
 	g.trackTiming("Clone", func() {
-		err = g.repoFetcher.Fetch(ctx, cloneURL, ref, g.exec)
+		err = g.repoFetcher.Fetch(ctx, g.getRepo(), g.exec)
 	})
 	if err != nil {
 		return &errorutils.InternalError{
@@ -277,8 +290,14 @@ func (g githubGoPR) setCommitStatus(ctx context.Context, status github.Status, d
 func (g githubGoPR) Process(ctx context.Context) error {
 	defer g.exec.Clean()
 
-	g.gw = workspaces.NewGo(g.exec)
-	if err := g.gw.Setup(ctx, "github.com", g.context.Repo.Owner, g.context.Repo.Name); err != nil {
+	var err error
+	g.pr, err = g.client.GetPullRequest(ctx, g.context)
+	if err != nil {
+		return fmt.Errorf("can't get pull request: %s", err)
+	}
+
+	g.gw = workspaces.NewGo(g.exec, g.infoFetcher)
+	if err = g.gw.Setup(ctx, g.getRepo(), "github.com", g.context.Repo.Owner, g.context.Repo.Name); err != nil {
 		return fmt.Errorf("can't setup go workspace: %s", err)
 	}
 	g.exec = g.gw.Executor()
@@ -291,13 +310,8 @@ func (g githubGoPR) Process(ctx context.Context) error {
 		return fmt.Errorf("can't get patch: %s", err)
 	}
 
-	if err = storePatch(ctx, g.gw, patch, g.exec); err != nil {
+	if err = storePatch(ctx, patch, g.exec); err != nil {
 		return fmt.Errorf("can't store patch: %s", err)
-	}
-
-	g.pr, err = g.client.GetPullRequest(ctx, g.context)
-	if err != nil {
-		return fmt.Errorf("can't get pull request: %s", err)
 	}
 
 	g.setCommitStatus(ctx, github.StatusPending, "GolangCI is reviewing your Pull Request...")
