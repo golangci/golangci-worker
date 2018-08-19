@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/linters"
@@ -320,6 +321,8 @@ func (g githubGoPR) Process(ctx context.Context) error {
 		analytics.Log(ctx).Warnf("Can't get current state: %s", err)
 	} else if curState.Status == statusSentToQueue {
 		g.addTimingFrom("In Queue", fromDBTime(curState.CreatedAt))
+		inQueue := time.Since(fromDBTime(curState.CreatedAt))
+		analytics.SaveEventProp(ctx, analytics.EventPRChecked, "inQueueSeconds", int(inQueue/time.Second))
 		curState.Status = statusProcessing
 		if err = g.state.UpdateState(ctx, g.context.Repo.Owner, g.context.Repo.Name, g.analysisGUID, curState); err != nil {
 			analytics.Log(ctx).Warnf("Can't update analysis %s state with setting status to 'processing': %s", g.analysisGUID, err)
