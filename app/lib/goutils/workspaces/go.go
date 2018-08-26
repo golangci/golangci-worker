@@ -29,8 +29,10 @@ func NewGo(exec executors.Executor, infoFetcher repoinfo.Fetcher) *Go {
 
 func (w *Go) Setup(ctx context.Context, repo *fetchers.Repo, projectPathParts ...string) error {
 	repoInfo, err := w.infoFetcher.Fetch(ctx, repo, w.exec)
-	// continue if no remote branch: it should be reported later (or not reported if PR is closed/merged)
-	if err != nil && !strings.Contains(err.Error(), "Could not find remote branch") {
+	// continue if no branch/repo: it should be reported later (or not reported if PR is closed/merged)
+	noBranchOrRepo := err != nil && (strings.Contains(err.Error(), "could not read Username for") ||
+		strings.Contains(err.Error(), "Could not find remote branch"))
+	if err != nil && !noBranchOrRepo {
 		return errors.Wrap(err, "failed to fetch repo info")
 	}
 
