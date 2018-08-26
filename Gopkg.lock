@@ -85,6 +85,14 @@
   version = "v2.0.0"
 
 [[projects]]
+  digest = "1:fed1f537c2f1269fe475a8556c393fe466641682d73ef8fd0491cd3aa1e47bad"
+  name = "github.com/certifi/gocertifi"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "deb3ae2ef2610fde3330947281941c562861188b"
+  version = "2018.01.18"
+
+[[projects]]
   branch = "master"
   digest = "1:1f7f77f3320fee4b173abc1fbbafc7ce17c99dfd0bf79ce080c0bf73a83c31f8"
   name = "github.com/davecgh/go-spew"
@@ -118,6 +126,14 @@
   pruneopts = "UT"
   revision = "d1ed5c67e5794de818ea85e6b522fda02623a484"
   version = "v1.4.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:608d0fe1621755354728fbaeef8ada8b4a33001aec88b66c970e641be950d850"
+  name = "github.com/getsentry/raven-go"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "7535a8fa2ace0ffb684b19f28d00655459ea2dae"
 
 [[projects]]
   digest = "1:50772cf1f376b08cb57b4e8e9225775d9f9f4aad8487313afcb66846ceaa5d4c"
@@ -178,6 +194,18 @@
   ]
   pruneopts = "UT"
   revision = "f81283f38df7ef7a1eb4e085a296887261b7b430"
+
+[[projects]]
+  branch = "master"
+  digest = "1:63091816102a8e6613fe71639638700cfe3c2777889a675dd6b3ee879a3b261b"
+  name = "github.com/golangci/golangci-shared"
+  packages = [
+    "pkg/apperrors",
+    "pkg/config",
+    "pkg/logutil",
+  ]
+  pruneopts = "UT"
+  revision = "8736eafcbc60df0421c5efffa36e2bc02435db8c"
 
 [[projects]]
   branch = "master"
@@ -448,15 +476,18 @@
     "github.com/golang/mock/gomock",
     "github.com/golangci/getrepoinfo/pkg/repoinfo",
     "github.com/golangci/golangci-lint/pkg/printers",
+    "github.com/golangci/golangci-shared/pkg/apperrors",
+    "github.com/golangci/golangci-shared/pkg/config",
+    "github.com/golangci/golangci-shared/pkg/logutil",
     "github.com/google/go-github/github",
     "github.com/joho/godotenv",
     "github.com/levigross/grequests",
     "github.com/pkg/errors",
+    "github.com/satori/go.uuid",
     "github.com/savaki/amplitude-go",
     "github.com/shirou/gopsutil/process",
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
-    "github.com/stvp/rollbar",
     "golang.org/x/oauth2",
   ]
   solver-name = "gps-cdcl"

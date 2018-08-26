@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/golangci/golangci-shared/pkg/apperrors"
 	"github.com/golangci/golangci-worker/app/lib/runmode"
 	"github.com/sirupsen/logrus"
 )
@@ -37,13 +38,13 @@ func (log logger) le() *logrus.Entry {
 func (log logger) Warnf(format string, args ...interface{}) {
 	err := fmt.Errorf(format, args...)
 	log.le().Warn(err.Error())
-	trackError(log.ctx, err, "WARN")
+	trackError(log.ctx, err, apperrors.LevelWarn)
 }
 
 func (log logger) Errorf(format string, args ...interface{}) {
 	err := fmt.Errorf(format, args...)
 	log.le().Error(err.Error())
-	trackError(log.ctx, err, "ERROR")
+	trackError(log.ctx, err, apperrors.LevelError)
 }
 
 func (log logger) Infof(format string, args ...interface{}) {
