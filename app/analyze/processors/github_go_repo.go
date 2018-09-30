@@ -213,7 +213,7 @@ func (g GithubGoRepo) Process(ctx context.Context) error {
 	if err = g.gw.Setup(ctx, g.getRepo(), "github.com", g.repo.Owner, g.repo.Name); err != nil {
 		if errors.Cause(err) == fetchers.ErrNoBranchOrRepo {
 			curState.Status = statusNotFound
-			if updateErr := g.state.UpdateState(ctx, g.repo.Owner, g.repo.Name, g.analysisGUID, curState); err != nil {
+			if updateErr := g.state.UpdateState(ctx, g.repo.Owner, g.repo.Name, g.analysisGUID, curState); updateErr != nil {
 				analytics.Log(ctx).Warnf("Can't update repo analysis %s state with setting status to 'not_found': %s",
 					g.analysisGUID, updateErr)
 			}
