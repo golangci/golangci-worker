@@ -19,6 +19,7 @@ import (
 	"github.com/golangci/golangci-worker/app/lib/github"
 	"github.com/golangci/golangci-worker/app/lib/goutils/workspaces"
 	"github.com/golangci/golangci-worker/app/lib/httputils"
+	"github.com/pkg/errors"
 )
 
 type GithubGoRepoConfig struct {
@@ -203,16 +204,25 @@ func (g *GithubGoRepo) work(ctx context.Context) (res *result.Result, err error)
 func (g GithubGoRepo) Process(ctx context.Context) error {
 	defer g.exec.Clean()
 
-	g.gw = workspaces.NewGo(g.exec, g.infoFetcher)
-	if err := g.gw.Setup(ctx, g.getRepo(), "github.com", g.repo.Owner, g.repo.Name); err != nil {
-		return fmt.Errorf("can't setup go workspace: %s", err)
-	}
-	g.exec = g.gw.Executor()
-
 	curState, err := g.state.GetState(ctx, g.repo.Owner, g.repo.Name, g.analysisGUID)
 	if err != nil {
 		return fmt.Errorf("can't get current state: %s", err)
 	}
+
+	g.gw = workspaces.NewGo(g.exec, g.infoFetcher)
+	if err = g.gw.Setup(ctx, g.getRepo(), "github.com", g.repo.Owner, g.repo.Name); err != nil {
+		if errors.Cause(err) == fetchers.ErrNoBranchOrRepo {
+			curState.Status = statusNotFound
+			if updateErr := g.state.UpdateState(ctx, g.repo.Owner, g.repo.Name, g.analysisGUID, curState); err != nil {
+				analytics.Log(ctx).Warnf("Can't update repo analysis %s state with setting status to 'not_found': %s",
+					g.analysisGUID, updateErr)
+			}
+			analytics.Log(ctx).Warnf("Branch or repo doesn't exist, set status not_found")
+			return nil
+		}
+		return fmt.Errorf("can't setup go workspace: %s", err)
+	}
+	g.exec = g.gw.Executor()
 
 	if curState.Status == statusSentToQueue {
 		g.addTimingFrom("In Queue", fromDBTime(curState.CreatedAt))

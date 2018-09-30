@@ -294,6 +294,9 @@ func (g githubGoPR) Process(ctx context.Context) error {
 	var err error
 	g.pr, err = g.client.GetPullRequest(ctx, g.context)
 	if err != nil {
+		if !github.IsRecoverableError(err) {
+			return err // preserve error
+		}
 		return fmt.Errorf("can't get pull request: %s", err)
 	}
 
