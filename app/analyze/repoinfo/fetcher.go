@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	info "github.com/golangci/getrepoinfo/pkg/repoinfo"
+	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/lib/executors"
 	"github.com/golangci/golangci-worker/app/lib/fetchers"
 	"github.com/pkg/errors"
@@ -12,7 +13,10 @@ import (
 
 //go:generate mockgen -package repoinfo -source fetcher.go -destination fetcher_mock.go
 
-type Info info.Info
+type Info struct {
+	info.Info
+	Error string
+}
 
 type Fetcher interface {
 	Fetch(ctx context.Context, repo *fetchers.Repo, exec executors.Executor) (*Info, error)
@@ -42,6 +46,10 @@ func (f CloningFetcher) Fetch(ctx context.Context, repo *fetchers.Repo, exec exe
 	var ret Info
 	if err = json.Unmarshal([]byte(out), &ret); err != nil {
 		return nil, errors.Wrap(err, "json unmarshal failed")
+	}
+
+	if ret.Error != "" {
+		analytics.Log(ctx).Warnf("Got getrepoinfo error: %s", ret.Error)
 	}
 
 	return &ret, nil
