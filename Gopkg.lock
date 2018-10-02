@@ -197,7 +197,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:63091816102a8e6613fe71639638700cfe3c2777889a675dd6b3ee879a3b261b"
+  digest = "1:861ac9b89522b83b0080a1cda341f7ec05765defc06e20ed17f4ec1c8e973754"
   name = "github.com/golangci/golangci-shared"
   packages = [
     "pkg/apperrors",
@@ -205,7 +205,7 @@
     "pkg/logutil",
   ]
   pruneopts = "UT"
-  revision = "8736eafcbc60df0421c5efffa36e2bc02435db8c"
+  revision = "9200811537b3f6b44bb21d7b8649b8d5a432a195"
 
 [[projects]]
   branch = "master"

@@ -1,11 +1,6 @@
 #!/bin/bash
 set -e
 
-go clean -cache
-rm -rf /tmp/glide-vendor*
-rm -rf /tmp/go-build*
-rm -rf $HOME/.glide/cache
-
 function install_by_vendoring_tool() {
 	if [[ -f 'Gopkg.toml' ]]; then
 		echo 'Dep was detected'
