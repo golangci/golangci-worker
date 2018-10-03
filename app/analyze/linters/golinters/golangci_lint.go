@@ -63,7 +63,7 @@ func (g GolangciLint) Run(ctx context.Context, exec executors.Executor) (*result
 	}
 
 	if res.Report != nil && len(res.Report.Warnings) != 0 {
-		analytics.Log(ctx).Warnf("Got golangci-lint warnings: %#v", res.Report.Warnings)
+		analytics.Log(ctx).Infof("Got golangci-lint warnings: %#v", res.Report.Warnings)
 	}
 
 	var retIssues []result.Issue

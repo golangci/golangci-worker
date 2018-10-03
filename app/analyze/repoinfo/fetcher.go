@@ -38,9 +38,9 @@ func (f CloningFetcher) Fetch(ctx context.Context, repo *fetchers.Repo, exec exe
 		return nil, errors.Wrapf(err, "failed to fetch repo ref %q by url %q", repo.Ref, repo.CloneURL)
 	}
 
-	out, err := exec.Run(ctx, "getrepoinfo")
+	out, err := exec.Run(ctx, "getrepoinfo", "--repo", repo.FullPath)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to run 'getrepoinfo'")
+		return nil, errors.Wrapf(err, "failed to run 'getrepoinfo --repo %s'", repo.FullPath)
 	}
 
 	var ret Info
@@ -49,7 +49,7 @@ func (f CloningFetcher) Fetch(ctx context.Context, repo *fetchers.Repo, exec exe
 	}
 
 	if ret.Error != "" {
-		analytics.Log(ctx).Warnf("Got getrepoinfo error: %s", ret.Error)
+		analytics.Log(ctx).Warnf("Got getrepoinfo error in json: %s", ret.Error)
 	}
 
 	return &ret, nil

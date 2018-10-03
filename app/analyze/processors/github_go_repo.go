@@ -7,6 +7,7 @@ import (
 	"runtime/debug"
 	"strings"
 
+	"github.com/golangci/golangci-api/pkg/ensuredeps"
 	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/linters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/golinters"
@@ -93,13 +94,15 @@ func (g *GithubGoRepo) getRepo() *fetchers.Repo {
 	return &fetchers.Repo{
 		CloneURL: fmt.Sprintf("https://github.com/%s/%s.git", g.repo.Owner, g.repo.Name),
 		Ref:      g.branch,
+		FullPath: fmt.Sprintf("github.com/%s/%s", g.repo.Owner, g.repo.Name),
 	}
 }
 
 func (g *GithubGoRepo) prepareRepo(ctx context.Context) error {
+	repo := g.getRepo()
 	var err error
 	g.trackTiming("Clone", func() {
-		err = g.repoFetcher.Fetch(ctx, g.getRepo(), g.exec)
+		err = g.repoFetcher.Fetch(ctx, repo, g.exec)
 	})
 	if err != nil {
 		return &errorutils.InternalError{
@@ -108,12 +111,21 @@ func (g *GithubGoRepo) prepareRepo(ctx context.Context) error {
 		}
 	}
 
+	var depsRes *ensuredeps.Result
 	g.trackTiming("Deps", func() {
-		err = g.gw.FetchDeps(ctx)
+		depsRes, err = g.gw.FetchDeps(ctx, repo.FullPath)
 	})
 	if err != nil {
-		g.publicWarn("prepare", "Can't fetch deps")
-		analytics.Log(ctx).Warnf("Can't fetch deps: %s", err)
+		// don't public warn: it's an internal error
+		analytics.Log(ctx).Warnf("Internal error fetching deps: %s", err)
+	} else {
+		analytics.Log(ctx).Infof("Got deps result: %#v", depsRes)
+		if !depsRes.Success {
+			g.publicWarn("prepare repo", "Can't fetch deps")
+		}
+		for _, w := range depsRes.Warnings {
+			analytics.Log(ctx).Infof("Fetch deps warning: [%s]: %s", w.Kind, w.Text)
+		}
 	}
 
 	return nil
