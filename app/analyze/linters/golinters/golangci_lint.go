@@ -30,9 +30,9 @@ func (g GolangciLint) Run(ctx context.Context, exec executors.Executor) (*result
 		"--issues-exit-code=0",
 		"--print-welcome=false",
 		"--deadline=5m",
-	}
-	if g.PatchPath != "" {
-		args = append(args, "--new-from-patch="+g.PatchPath)
+		"--new=false",
+		"--new-from-rev=",
+		"--new-from-patch=" + g.PatchPath,
 	}
 	args = append(args, filepath.Join(exec.WorkDir(), "..."))
 
