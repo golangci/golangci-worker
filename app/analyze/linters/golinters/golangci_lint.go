@@ -42,9 +42,8 @@ func (g GolangciLint) Run(ctx context.Context, exec executors.Executor) (*result
 	if runErr != nil {
 		var res printers.JSONResult
 		if jsonErr := json.Unmarshal(rawJSON, &res); jsonErr == nil && res.Report.Error != "" {
-			return nil, &errorutils.InternalError{
-				PublicDesc:  fmt.Sprintf("can't run golangci-lint: %s", res.Report.Error),
-				PrivateDesc: fmt.Sprintf("can't run golangci-lint: %s, %s", res.Report.Error, runErr),
+			return nil, &errorutils.BadInputError{
+				PublicDesc: fmt.Sprintf("can't run golangci-lint: %s", res.Report.Error),
 			}
 		}
 

@@ -177,6 +177,11 @@ func (g *GithubGoRepo) processWithGuaranteedGithubStatus(ctx context.Context) er
 				status = string(github.StatusError)
 				publicError = ierr.PublicDesc
 			}
+		} else if berr, ok := err.(*errorutils.BadInputError); ok {
+			publicError = berr.PublicDesc
+			status = statusProcessed
+			err = nil
+			analytics.Log(ctx).Warnf("Repo analysis bad input error: %s", berr)
 		} else {
 			status = string(github.StatusError)
 			publicError = internalError

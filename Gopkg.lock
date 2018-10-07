@@ -180,6 +180,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:44f80a7480e964d7a11e0ff8b26a1883afe27740aea53969e01c2175c8a60e72"
+  name = "github.com/golangci/golangci-api"
+  packages = ["pkg/ensuredeps"]
+  pruneopts = "UT"
+  revision = "e74c7f41b2dab10930b3aef629e831a0d08fe5f4"
+
+[[projects]]
+  branch = "master"
   digest = "1:2ed558bf2e39fda3a1349bdddfdb1bc6286504b60b6487c53b7f6649a3f4af3c"
   name = "github.com/golangci/golangci-lint"
   packages = [
@@ -475,6 +483,7 @@
     "github.com/dukex/mixpanel",
     "github.com/golang/mock/gomock",
     "github.com/golangci/getrepoinfo/pkg/repoinfo",
+    "github.com/golangci/golangci-api/pkg/ensuredeps",
     "github.com/golangci/golangci-lint/pkg/printers",
     "github.com/golangci/golangci-shared/pkg/apperrors",
     "github.com/golangci/golangci-shared/pkg/config",

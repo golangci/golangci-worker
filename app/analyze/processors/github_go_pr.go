@@ -220,6 +220,11 @@ func (g *githubGoPR) processWithGuaranteedGithubStatus(ctx context.Context) erro
 				status, statusDesc = github.StatusError, ierr.PublicDesc
 			}
 			publicError = statusDesc
+		} else if berr, ok := err.(*errorutils.BadInputError); ok {
+			status, statusDesc = github.StatusError, berr.PublicDesc
+			publicError = statusDesc
+			err = nil
+			analytics.Log(ctx).Warnf("PR analysis bad input error: %s", berr)
 		} else {
 			status, statusDesc = github.StatusError, internalError
 			publicError = statusDesc
