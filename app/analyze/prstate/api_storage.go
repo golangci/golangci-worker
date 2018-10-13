@@ -23,7 +23,7 @@ func NewAPIStorage(client httputils.Client) *APIStorage {
 }
 
 func (s APIStorage) getStatusURL(owner, name, analysisID string) string {
-	return fmt.Sprintf("%s/v1/repos/%s/%s/analyzes/%s/state", s.host, owner, name, analysisID)
+	return fmt.Sprintf("%s/v1/repos/github.com/%s/%s/analyzes/%s/state", s.host, owner, name, analysisID)
 }
 
 func (s APIStorage) UpdateState(ctx context.Context, owner, name, analysisID string, state *State) error {
