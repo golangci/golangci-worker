@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 
 	"github.com/golangci/golangci-lint/pkg/printers"
 	"github.com/golangci/golangci-worker/app/analytics"
@@ -34,7 +33,6 @@ func (g GolangciLint) Run(ctx context.Context, exec executors.Executor) (*result
 		"--new-from-rev=",
 		"--new-from-patch=" + g.PatchPath,
 	}
-	args = append(args, filepath.Join(exec.WorkDir(), "..."))
 
 	out, runErr := exec.Run(ctx, g.Name(), args...)
 	rawJSON := []byte(out)
