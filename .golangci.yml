@@ -21,3 +21,6 @@ linters:
     - prealloc
     - dupl # temporary
     - gosec
+    - scopelint
+    - gochecknoglobals
+    - gochecknoinits

@@ -138,8 +138,6 @@ func (s shell) runAsync(ctx context.Context, name string, args ...string) (int, 
 		return 0, nil, nil, err
 	}
 
-	return cmd.Process.Pid, outReader, func() error {
-		// XXX: it's important to not change error here, because it holds exit code
-		return cmd.Wait()
-	}, nil
+	// XXX: it's important to not change error here, because it holds exit code
+	return cmd.Process.Pid, outReader, cmd.Wait, nil
 }
