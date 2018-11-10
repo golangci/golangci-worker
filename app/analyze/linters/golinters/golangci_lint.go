@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
-	"github.com/golangci/golangci-lint/pkg/printers"
 	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/linters/result"
 	"github.com/golangci/golangci-worker/app/lib/errorutils"
 	"github.com/golangci/golangci-worker/app/lib/executors"
+
+	"github.com/golangci/golangci-lint/pkg/printers"
 )
 
 type GolangciLint struct {
@@ -42,6 +44,14 @@ func (g GolangciLint) Run(ctx context.Context, exec executors.Executor) (*result
 		if jsonErr := json.Unmarshal(rawJSON, &res); jsonErr == nil && res.Report.Error != "" {
 			return nil, &errorutils.BadInputError{
 				PublicDesc: fmt.Sprintf("can't run golangci-lint: %s", res.Report.Error),
+			}
+		}
+
+		badLoadStr := "failed to load program with go/packages"
+		if strings.Contains(out, badLoadStr) {
+			ind := strings.Index(out, badLoadStr)
+			return nil, &errorutils.BadInputError{
+				PublicDesc: out[ind:],
 			}
 		}
 
