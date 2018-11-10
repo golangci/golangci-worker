@@ -237,7 +237,6 @@ func (g *githubGoPR) processWithGuaranteedGithubStatus(ctx context.Context) erro
 				status, statusDesc = github.StatusError, ierr.PublicDesc
 			}
 			publicError = statusDesc
-			analytics.Log(ctx).Infof("Got internal error")
 		} else if berr, ok := err.(*errorutils.BadInputError); ok {
 			berr.PublicDesc = escapeErrorText(berr.PublicDesc, g.buildSecrets())
 			status, statusDesc = github.StatusError, "can't analyze"

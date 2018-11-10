@@ -48,14 +48,14 @@ func (g GolangciLint) Run(ctx context.Context, exec executors.Executor) (*result
 		}
 
 		const badLoadStr = "failed to load program with go/packages"
-		if strings.Contains(out, badLoadStr) {
-			ind := strings.Index(out, badLoadStr)
-			analytics.Log(ctx).Infof("Failed to load program")
-			return nil, &errorutils.BadInputError{
-				PublicDesc: out[ind:],
+		if strings.Contains(runErr.Error(), badLoadStr) {
+			ind := strings.Index(runErr.Error(), badLoadStr)
+			if ind < len(runErr.Error())-1 {
+				return nil, &errorutils.BadInputError{
+					PublicDesc: runErr.Error()[ind:],
+				}
 			}
 		}
-		analytics.Log(ctx).Infof("NOT failed to load program: out=%q", out)
 
 		return nil, &errorutils.InternalError{
 			PublicDesc:  "can't run golangci-lint",
