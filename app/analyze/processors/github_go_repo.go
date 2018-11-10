@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"runtime/debug"
 	"strings"
 
@@ -120,10 +121,12 @@ func (g *GithubGoRepo) prepareRepo(ctx context.Context) error {
 		analytics.Log(ctx).Warnf("Internal error fetching deps: %s", err)
 	} else {
 		analytics.Log(ctx).Infof("Got deps result: %#v", depsRes)
-		if !depsRes.Success {
-			g.publicWarn("prepare repo", "Can't fetch deps")
-		}
+
 		for _, w := range depsRes.Warnings {
+			warnText := fmt.Sprintf("Fetch deps: %s: %s", w.Kind, w.Text)
+			warnText = escapeErrorText(warnText, g.buildSecrets())
+			g.publicWarn("prepare repo", warnText)
+
 			analytics.Log(ctx).Infof("Fetch deps warning: [%s]: %s", w.Kind, w.Text)
 		}
 	}
@@ -178,6 +181,7 @@ func (g *GithubGoRepo) processWithGuaranteedGithubStatus(ctx context.Context) er
 				publicError = ierr.PublicDesc
 			}
 		} else if berr, ok := err.(*errorutils.BadInputError); ok {
+			berr.PublicDesc = escapeErrorText(berr.PublicDesc, g.buildSecrets())
 			publicError = berr.PublicDesc
 			status = statusProcessed
 			err = nil
@@ -192,6 +196,16 @@ func (g *GithubGoRepo) processWithGuaranteedGithubStatus(ctx context.Context) er
 
 	g.updateAnalysisState(ctx, res, status, publicError)
 	return err
+}
+
+func (g GithubGoRepo) buildSecrets() map[string]bool {
+	ret := map[string]bool{}
+
+	for _, k := range []string{"REMOTE_SHELL_HOST", "REMOTE_SHELL_USER", "REMOTE_SHELL_KEY_FILE_PATH", "GITHUB_TOKEN", "REDIS_URL"} {
+		ret[os.Getenv(k)] = true
+	}
+
+	return ret
 }
 
 func (g *GithubGoRepo) work(ctx context.Context) (res *result.Result, err error) {

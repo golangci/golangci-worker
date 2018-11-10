@@ -149,10 +149,12 @@ func (g *githubGoPR) prepareRepo(ctx context.Context) error {
 		analytics.Log(ctx).Warnf("Internal error fetching deps: %s", err)
 	} else {
 		analytics.Log(ctx).Infof("Got deps result: %#v", depsRes)
-		if !depsRes.Success {
-			g.publicWarn("prepare repo", "Can't fetch deps")
-		}
+
 		for _, w := range depsRes.Warnings {
+			warnText := fmt.Sprintf("Fetch deps: %s: %s", w.Kind, w.Text)
+			warnText = escapeErrorText(warnText, g.buildSecrets())
+			g.publicWarn("prepare repo", warnText)
+
 			analytics.Log(ctx).Infof("Fetch deps warning: [%s]: %s", w.Kind, w.Text)
 		}
 	}
@@ -197,6 +199,18 @@ func getGithubStatusForIssues(issues []result.Issue) (github.Status, string) {
 	}
 }
 
+func (g githubGoPR) buildSecrets() map[string]bool {
+	ret := map[string]bool{
+		g.context.GithubAccessToken: true,
+	}
+
+	for _, k := range []string{"REMOTE_SHELL_HOST", "REMOTE_SHELL_USER", "REMOTE_SHELL_KEY_FILE_PATH", "GITHUB_TOKEN", "REDIS_URL"} {
+		ret[os.Getenv(k)] = true
+	}
+
+	return ret
+}
+
 func (g *githubGoPR) processWithGuaranteedGithubStatus(ctx context.Context) error {
 	res, err := g.work(ctx)
 	analytics.Log(ctx).Infof("timings: %s", g.timings)
@@ -221,6 +235,7 @@ func (g *githubGoPR) processWithGuaranteedGithubStatus(ctx context.Context) erro
 			}
 			publicError = statusDesc
 		} else if berr, ok := err.(*errorutils.BadInputError); ok {
+			berr.PublicDesc = escapeErrorText(berr.PublicDesc, g.buildSecrets())
 			status, statusDesc = github.StatusError, berr.PublicDesc
 			publicError = statusDesc
 			err = nil
