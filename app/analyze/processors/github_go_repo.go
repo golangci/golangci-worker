@@ -202,7 +202,10 @@ func (g GithubGoRepo) buildSecrets() map[string]bool {
 	ret := map[string]bool{}
 
 	for _, k := range []string{"REMOTE_SHELL_HOST", "REMOTE_SHELL_USER", "REMOTE_SHELL_KEY_FILE_PATH", "GITHUB_TOKEN", "REDIS_URL"} {
-		ret[os.Getenv(k)] = true
+		v := os.Getenv(k)
+		if v != "" {
+			ret[v] = true
+		}
 	}
 
 	return ret
