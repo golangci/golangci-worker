@@ -89,3 +89,10 @@ func (w Go) FetchDeps(ctx context.Context, fullRepoPath string) (*ensuredeps.Res
 
 	return &res, nil
 }
+
+func (w Go) Clean(ctx context.Context) {
+	out, err := w.exec.Run(ctx, "go", "clean", "-modcache")
+	if err != nil {
+		analytics.Log(ctx).Warnf("Can't clean go modcache: %s, %s", err, out)
+	}
+}

@@ -322,6 +322,7 @@ func (g githubGoPR) Process(ctx context.Context) error {
 	if err = g.gw.Setup(ctx, g.getRepo(), "github.com", g.context.Repo.Owner, g.context.Repo.Name); err != nil {
 		return fmt.Errorf("can't setup go workspace: %s", err)
 	}
+	defer g.gw.Clean(ctx)
 	g.exec = g.gw.Executor()
 
 	patch, err := g.client.GetPullRequestPatch(ctx, g.context)

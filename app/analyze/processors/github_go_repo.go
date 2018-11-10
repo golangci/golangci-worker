@@ -227,6 +227,7 @@ func (g GithubGoRepo) Process(ctx context.Context) error {
 	}
 
 	g.gw = workspaces.NewGo(g.exec, g.infoFetcher)
+	defer g.gw.Clean(ctx)
 	if err = g.gw.Setup(ctx, g.getRepo(), "github.com", g.repo.Owner, g.repo.Name); err != nil {
 		if errors.Cause(err) == fetchers.ErrNoBranchOrRepo {
 			curState.Status = statusNotFound
