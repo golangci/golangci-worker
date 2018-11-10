@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -87,6 +88,12 @@ func (s shell) wait(ctx context.Context, name string, childPid int, outReader io
 }
 
 func (s shell) Run(ctx context.Context, name string, args ...string) (string, error) {
+	for i := range args {
+		unquotedArg, err := strconv.Unquote(args[i])
+		if err == nil {
+			args[i] = unquotedArg
+		}
+	}
 	startedAt := time.Now()
 	pid, outReader, finish, err := s.runAsync(ctx, name, args...)
 	if err != nil {
