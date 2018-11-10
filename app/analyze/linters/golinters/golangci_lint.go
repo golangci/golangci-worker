@@ -47,13 +47,15 @@ func (g GolangciLint) Run(ctx context.Context, exec executors.Executor) (*result
 			}
 		}
 
-		badLoadStr := "failed to load program with go/packages"
+		const badLoadStr = "failed to load program with go/packages"
 		if strings.Contains(out, badLoadStr) {
 			ind := strings.Index(out, badLoadStr)
+			analytics.Log(ctx).Infof("Failed to load program")
 			return nil, &errorutils.BadInputError{
 				PublicDesc: out[ind:],
 			}
 		}
+		analytics.Log(ctx).Infof("NOT failed to load program: out=%q", out)
 
 		return nil, &errorutils.InternalError{
 			PublicDesc:  "can't run golangci-lint",
