@@ -198,13 +198,16 @@ func (g *GithubGoRepo) processWithGuaranteedGithubStatus(ctx context.Context) er
 	return err
 }
 
-func (g GithubGoRepo) buildSecrets() map[string]bool {
-	ret := map[string]bool{}
+func (g GithubGoRepo) buildSecrets() map[string]string {
+	const hidden = "{hidden}"
+	ret := map[string]string{
+		g.gw.Gopath(): "$GOPATH",
+	}
 
 	for _, k := range []string{"REMOTE_SHELL_HOST", "REMOTE_SHELL_USER", "REMOTE_SHELL_KEY_FILE_PATH", "GITHUB_TOKEN", "REDIS_URL"} {
 		v := os.Getenv(k)
 		if v != "" {
-			ret[v] = true
+			ret[v] = hidden
 		}
 	}
 

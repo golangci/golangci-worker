@@ -199,15 +199,17 @@ func getGithubStatusForIssues(issues []result.Issue) (github.Status, string) {
 	}
 }
 
-func (g githubGoPR) buildSecrets() map[string]bool {
-	ret := map[string]bool{
-		g.context.GithubAccessToken: true,
+func (g githubGoPR) buildSecrets() map[string]string {
+	const hidden = "{hidden}"
+	ret := map[string]string{
+		g.context.GithubAccessToken: hidden,
+		g.gw.Gopath():               "$GOPATH",
 	}
 
 	for _, k := range []string{"REMOTE_SHELL_HOST", "REMOTE_SHELL_USER", "REMOTE_SHELL_KEY_FILE_PATH", "GITHUB_TOKEN", "REDIS_URL"} {
 		v := os.Getenv(k)
 		if v != "" {
-			ret[v] = true
+			ret[v] = hidden
 		}
 	}
 

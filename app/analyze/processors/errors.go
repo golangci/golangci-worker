@@ -16,10 +16,10 @@ func (e IgnoredError) Error() string {
 	return e.StatusDesc
 }
 
-func escapeErrorText(text string, secrets map[string]bool) string {
+func escapeErrorText(text string, secrets map[string]string) string {
 	ret := text
-	for secret := range secrets {
-		ret = strings.Replace(ret, secret, "{hidden}", -1)
+	for secret, replacement := range secrets {
+		ret = strings.Replace(ret, secret, replacement, -1)
 	}
 
 	return ret
