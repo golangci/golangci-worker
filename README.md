@@ -43,17 +43,15 @@ Configurate via `.env` file. Dev `.env` may be like this:
 REDIS_URL="redis://localhost:6379"
 API_URL="https://api.dev.golangci.com"
 WEB_ROOT="https://dev.golangci.com"
-USE_DOCKER_EXECUTOR=1
+USE_CONTAINER_EXECUTOR=1
 ```
 
 ### Executors
 
-Executor is an abstraction over executing shell commands. In production we use remote shell executor (machine by ssh).
-For local development it's better to use docker executor:
+TODO
 
 ```bash
-docker build -t golangci_executor -f app/docker/executor.dockerfile .
-echo "USE_DOCKER_EXECUTOR=1" >>.env
+echo "USE_CONTAINER_EXECUTOR=1" >>.env
 ```
 
 ### API

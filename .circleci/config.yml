@@ -23,8 +23,7 @@ jobs:
       - checkout
 
       # # specify any bash command here prefixed with `run: `
-      - run: go get github.com/golang/dep/cmd/dep
-      - run: dep ensure -v
+      - run: GO111MODULE=on go mod vendor
       - run: make build
       - run: go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
       - run: echo 'REDIS_URL="redis://localhost:6379"' >.env

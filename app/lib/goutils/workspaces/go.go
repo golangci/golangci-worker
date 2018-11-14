@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/golangci/golangci-api/pkg/ensuredeps"
+	"github.com/golangci/golangci-api/pkg/app/ensuredeps"
 	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/repoinfo"
 	"github.com/golangci/golangci-worker/app/lib/executors"
@@ -41,8 +41,8 @@ func (w *Go) Setup(ctx context.Context, repo *fetchers.Repo, projectPathParts ..
 		projectPathParts = newProjectPathParts
 	}
 
-	if _, err := w.exec.Run(ctx, "rm", "-rf", "*"); err != nil {
-		return errors.Wrap(err, "failed to cleanup after repo info fetcher")
+	if _, err := w.exec.Run(ctx, "find", ".", "-delete"); err != nil {
+		analytics.Log(ctx).Warnf("Failed to cleanup after repo info fetcher: %s", err)
 	}
 
 	gopath := w.exec.WorkDir()
