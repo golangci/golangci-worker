@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/golangci/golangci-worker/app/analytics"
+
 	"github.com/golangci/golangci-worker/app/lib/executors"
 	"github.com/pkg/errors"
 )
@@ -28,6 +30,16 @@ func (gf Git) Fetch(ctx context.Context, repo *Repo, exec executors.Executor) er
 		}
 
 		return errors.Wrapf(err, "can't run git cmd %v: %s", args, out)
+	}
+
+	// some repos have deps in submodules, e.g. https://github.com/orbs-network/orbs-network-go
+	if out, err := exec.Run(ctx, "git", "submodule", "init"); err != nil {
+		analytics.Log(ctx).Warnf("Failed to init git submodule: %s, %s", err, out)
+		return nil
+	}
+	if out, err := exec.Run(ctx, "git", "submodule", "update", "--init", "--recursive"); err != nil {
+		analytics.Log(ctx).Warnf("Failed to init git submodule: %s, %s", err, out)
+		return nil
 	}
 
 	return nil
