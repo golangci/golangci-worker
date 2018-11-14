@@ -15,12 +15,6 @@ func newEnvStore() *envStore {
 	}
 }
 
-func newEnvStoreNoOS() *envStore {
-	return &envStore{
-		env: []string{},
-	}
-}
-
 func (e *envStore) SetEnv(k, v string) {
 	e.env = append(e.env, fmt.Sprintf("%s=%s", k, v))
 }

@@ -8,7 +8,7 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/golangci/golangci-api/pkg/ensuredeps"
+	"github.com/golangci/golangci-api/pkg/app/ensuredeps"
 	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/linters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/golinters"
@@ -55,7 +55,7 @@ func NewGithubGoRepo(ctx context.Context, cfg GithubGoRepoConfig, analysisGUID, 
 
 	if cfg.exec == nil {
 		var err error
-		cfg.exec, err = makeExecutor(ctx)
+		cfg.exec, err = makeExecutor(ctx, repo)
 		if err != nil {
 			return nil, fmt.Errorf("can't make executor: %s", err)
 		}

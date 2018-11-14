@@ -13,6 +13,10 @@ type Repo struct {
 	Owner, Name string
 }
 
+func (r Repo) FullName() string {
+	return fmt.Sprintf("%s/%s", r.Owner, r.Name)
+}
+
 type Context struct {
 	Repo              Repo
 	GithubAccessToken string

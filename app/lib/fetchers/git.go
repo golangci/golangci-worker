@@ -2,7 +2,6 @@ package fetchers
 
 import (
 	"context"
-	"strconv"
 	"strings"
 
 	"github.com/golangci/golangci-worker/app/analytics"
@@ -21,7 +20,7 @@ func NewGit() *Git {
 
 func (gf Git) Fetch(ctx context.Context, repo *Repo, exec executors.Executor) error {
 	args := []string{"clone", "-q", "--depth", "1", "--branch",
-		strconv.Quote(repo.Ref), strconv.Quote(repo.CloneURL), "."}
+		repo.Ref, repo.CloneURL, "."}
 	if out, err := exec.Run(ctx, "git", args...); err != nil {
 		noBranchOrRepo := strings.Contains(err.Error(), "could not read Username for") ||
 			strings.Contains(err.Error(), "Could not find remote branch")
