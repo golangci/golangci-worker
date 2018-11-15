@@ -2,7 +2,9 @@ package consumers
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 
 	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/processors"
@@ -27,6 +29,11 @@ func (c AnalyzeRepo) Consume(ctx context.Context, repoName, analysisGUID, branch
 		"analysisGUID": analysisGUID,
 		"branch":       branch,
 	})
+
+	if os.Getenv("DISABLE_REPO_ANALYSIS") == "1" {
+		analytics.Log(ctx).Warnf("Repo analysis is disabled, return error to try it later")
+		return errors.New("repo analysis is disabled")
+	}
 
 	_ = c.wrapConsuming(ctx, func() error {
 		return c.analyzeRepo(ctx, repoName, analysisGUID, branch)
