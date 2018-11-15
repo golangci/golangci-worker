@@ -1,7 +1,7 @@
 module github.com/golangci/golangci-worker
 
 // +heroku goVersion go1.11
-// +heroku install ./cmd/...
+// +heroku install ./app/cmd/...
 
 require (
 	github.com/RichardKnop/machinery v0.0.0-20180221144734-c5e057032f00
