@@ -35,6 +35,13 @@ REPO={OWNER/NAME} PR={PULL_REQUEST_NUMBER} make test_repo_fake_github
 
 e.g. `REPO=golangci/golangci-worker PR=39 make test_repo_fake_github`
 
+### How to run analysis of pull request locally
+
+```bash
+# in golangci-api repo
+godotenv -f .env go run ./scripts/emulate_webhook/main.go -repo golangci/golangci-lint -pr 292 -sha 7b605d5c6f5a524e6b0a9cc12ad747222375ad54
+```
+
 ### Configuration
 
 Configurate via `.env` file. Dev `.env` may be like this:
