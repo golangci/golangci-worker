@@ -46,7 +46,7 @@ func (c AnalyzeRepo) Consume(ctx context.Context, repoName, analysisGUID, branch
 func (c AnalyzeRepo) analyzeRepo(ctx context.Context, repoName, analysisGUID, branch string) error {
 	p, err := processors.NewGithubGoRepo(ctx, processors.GithubGoRepoConfig{}, analysisGUID, repoName, branch)
 	if err != nil {
-		return fmt.Errorf("can't make github go repo proessor: %s", err)
+		return fmt.Errorf("can't make github go repo processor: %s", err)
 	}
 
 	if err := p.Process(ctx); err != nil {

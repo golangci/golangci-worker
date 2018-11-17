@@ -44,14 +44,24 @@ REDIS_URL="redis://localhost:6379"
 API_URL="https://api.dev.golangci.com"
 WEB_ROOT="https://dev.golangci.com"
 USE_CONTAINER_EXECUTOR=1
+ORCHESTRATOR_ADDR="http://127.0.0.1:8001"
+ORCHESTRATOR_TOKEN=secret_token
 ```
 
 ### Executors
 
-TODO
+Executor is an abstration allowing to run arbitrary shell commands.
+We support following executor types:
+
+1. shell - runs commands on a local machine
+2. remote shell - runs commands on the specified remote host; it's currently the primary executor
+3. container - runs commands by sending them to containers orchestrator; containers orchestrator runs container for executing commands; currently we migrate to this executor type.
+
+The recommended way to run executors during development:
 
 ```bash
-echo "USE_CONTAINER_EXECUTOR=1" >>.env
+# in golangci-api repo
+TOKEN=secret_token go run ./cmd/containers_orchestrator/main.go
 ```
 
 ### API
