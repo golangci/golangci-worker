@@ -1,11 +1,10 @@
 # (cd app/docker && docker build -t golangci/build-runner .)
-FROM golang:1.11
-
-WORKDIR /go
+FROM golang:1.11 as builder
 
 ENV GOPATH=/go
 ENV GOBINPATH=$GOPATH/bin
-ENV PATH=$PATH:/usr/local/go/bin:$GOBINPATH
+
+WORKDIR ${GOPATH}
 
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b $GOPATH/bin v1.12.2
 
@@ -31,16 +30,23 @@ RUN git clone https://github.com/golangci/getrepoinfo.git . && \
 
 WORKDIR ${GOPATH}/src/github.com/golangci/golangci-api
 RUN git clone https://github.com/golangci/golangci-api.git . && \
-    git checkout 26aa17ce80c0040d093001ae16aa0ac1245996e0 && \
-    dep ensure -v && \
+    git checkout 5d76a89b53bd1771e3d6a307af634b99443d0508 && \
+    GO111MODULE=on go mod vendor && \
     go install ./cmd/ensuredeps && \
     go install ./cmd/buildrunner
 
-WORKDIR /go
-RUN rm -rf ${GOPATH}/src ${GOPATH}/pkg /tmp/* && go clean -cache -modcache
-WORKDIR /goapp
-
 RUN mkdir /app && echo 'echo TODO: remove' >/app/cleanup.sh
+
+FROM golang:1.11
+
+ENV GOPATH=/go
+ENV GOBINPATH=$GOPATH/bin
+ENV PATH=$PATH:/usr/local/go/bin:$GOBINPATH
+
+COPY --from=builder ${GOPATH}/bin/* ${GOPATH}/bin/
+COPY --from=builder /app/cleanup.sh /app/
+
+WORKDIR /goapp
 
 ENV PORT=7000 MAX_LIFETIME=30m
 

@@ -160,8 +160,11 @@ func (c Container) CopyFile(ctx context.Context, dst, src string) error {
 
 func (c Container) Clean() {
 	err := func() error {
+		ctx, finish := context.WithTimeout(context.TODO(), time.Second*30)
+		defer finish()
+
 		resp, err := grequests.Post(fmt.Sprintf("%s/shutdown", c.orchestratorAddr), &grequests.RequestOptions{
-			Context: context.TODO(),
+			Context: ctx,
 			JSON: containers.ShutdownContainerRequest{
 				TimeoutMs:   30 * 1000, // 30s
 				ContainerID: c.containerID,

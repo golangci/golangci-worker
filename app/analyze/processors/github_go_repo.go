@@ -22,6 +22,7 @@ import (
 	"github.com/golangci/golangci-worker/app/lib/goutils/workspaces"
 	"github.com/golangci/golangci-worker/app/lib/httputils"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 type GithubGoRepoConfig struct {
@@ -204,9 +205,15 @@ func (g GithubGoRepo) buildSecrets() map[string]string {
 		g.gw.Gopath(): "$GOPATH",
 	}
 
-	for _, k := range []string{"REMOTE_SHELL_HOST", "REMOTE_SHELL_USER", "REMOTE_SHELL_KEY_FILE_PATH", "GITHUB_TOKEN", "REDIS_URL"} {
-		v := os.Getenv(k)
-		if v != "" {
+	for _, kv := range os.Environ() {
+		parts := strings.Split(kv, "=")
+		if len(parts) != 2 {
+			logrus.Warnf("invalid kv %q", kv)
+			continue
+		}
+
+		v := parts[1]
+		if len(v) >= 6 {
 			ret[v] = hidden
 		}
 	}

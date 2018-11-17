@@ -9,7 +9,7 @@ require (
 	github.com/dukex/mixpanel v0.0.0-20170510165255-53bfdf679eec
 	github.com/golang/mock v1.1.1
 	github.com/golangci/getrepoinfo v0.0.0-20180818083854-2a0c71df2c85
-	github.com/golangci/golangci-api v0.0.0-20181114200623-38113e64849c
+	github.com/golangci/golangci-api v0.0.0-20181114200623-5d76a89b53bd
 	github.com/golangci/golangci-lint v0.0.0-20181114200623-a84578d603c7
 	github.com/golangci/golangci-shared v0.0.0-20181003182622-9200811537b3
 	github.com/google/go-github v0.0.0-20180123235826-b1f138353a62
