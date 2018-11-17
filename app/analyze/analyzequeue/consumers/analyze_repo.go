@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/processors"
@@ -36,6 +37,12 @@ func (c AnalyzeRepo) Consume(ctx context.Context, repoName, analysisGUID, branch
 	}
 
 	_ = c.wrapConsuming(ctx, func() error {
+		var cancel context.CancelFunc
+		// If you change timeout value don't forget to change it
+		// in golangci-api stale analyzes checker
+		ctx, cancel = context.WithTimeout(ctx, 10*time.Minute)
+		defer cancel()
+
 		return c.analyzeRepo(ctx, repoName, analysisGUID, branch)
 	})
 
