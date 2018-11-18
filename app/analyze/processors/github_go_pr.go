@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/golangci/golangci-api/pkg/app/ensuredeps"
 
 	"github.com/golangci/golangci-worker/app/analytics"
@@ -211,7 +209,6 @@ func (g githubGoPR) buildSecrets() map[string]string {
 	for _, kv := range os.Environ() {
 		parts := strings.Split(kv, "=")
 		if len(parts) != 2 {
-			logrus.Warnf("invalid kv %q", kv)
 			continue
 		}
 

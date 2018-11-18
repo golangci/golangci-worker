@@ -22,7 +22,6 @@ import (
 	"github.com/golangci/golangci-worker/app/lib/goutils/workspaces"
 	"github.com/golangci/golangci-worker/app/lib/httputils"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
 
 type GithubGoRepoConfig struct {
@@ -208,7 +207,6 @@ func (g GithubGoRepo) buildSecrets() map[string]string {
 	for _, kv := range os.Environ() {
 		parts := strings.Split(kv, "=")
 		if len(parts) != 2 {
-			logrus.Warnf("invalid kv %q", kv)
 			continue
 		}
 
