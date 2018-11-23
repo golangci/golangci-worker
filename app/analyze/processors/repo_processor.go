@@ -215,7 +215,7 @@ func (r Repo) submitResult(ctx *RepoContext, res *repoResult, err error) {
 	if err == nil {
 		r.Log.Infof("Succeeded repo analysis, timings: %v", res.timings)
 	} else {
-		r.Log.Infof("Failed repo analysis: %s, timings: %v", err, res.timings)
+		r.Log.Errorf("Failed repo analysis: %s, timings: %v", err, res.timings)
 	}
 
 	if res.prepareLog != nil {
