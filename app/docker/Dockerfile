@@ -30,7 +30,7 @@ RUN git clone https://github.com/golangci/getrepoinfo.git . && \
 
 WORKDIR ${GOPATH}/src/github.com/golangci/golangci-api
 RUN git clone https://github.com/golangci/golangci-api.git . && \
-    git checkout 0b741819c35fb652da26f2b8642ac81bf6047c50 && \
+    git checkout fcd9f4d9ac3d069a53078a498b7e02b37962ad11 && \
     GO111MODULE=on go mod vendor && \
     go install ./cmd/ensuredeps && \
     go install ./cmd/buildrunner && \
