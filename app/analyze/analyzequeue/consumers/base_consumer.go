@@ -27,6 +27,7 @@ func (c baseConsumer) wrapConsuming(ctx context.Context, f func() error) (err er
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic recovered: %v, %s, source is %s", r, debug.Stack(), err)
+			analytics.Log(ctx).Errorf("processing of %q task failed: %s", c.eventName, err)
 		}
 	}()
 

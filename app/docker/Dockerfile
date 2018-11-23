@@ -30,10 +30,11 @@ RUN git clone https://github.com/golangci/getrepoinfo.git . && \
 
 WORKDIR ${GOPATH}/src/github.com/golangci/golangci-api
 RUN git clone https://github.com/golangci/golangci-api.git . && \
-    git checkout 5d76a89b53bd1771e3d6a307af634b99443d0508 && \
+    git checkout 0b741819c35fb652da26f2b8642ac81bf6047c50 && \
     GO111MODULE=on go mod vendor && \
     go install ./cmd/ensuredeps && \
-    go install ./cmd/buildrunner
+    go install ./cmd/buildrunner && \
+    go install ./cmd/goenvbuild
 
 RUN mkdir /app && echo 'echo TODO: remove' >/app/cleanup.sh
 

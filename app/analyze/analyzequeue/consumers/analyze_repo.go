@@ -2,24 +2,32 @@ package consumers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/processors"
+	"github.com/golangci/golangci-worker/app/lib/experiments"
+	"github.com/golangci/golangci-worker/app/lib/github"
+	"github.com/pkg/errors"
 )
 
 type AnalyzeRepo struct {
 	baseConsumer
+
+	ec  *experiments.Checker
+	rpf *processors.RepoProcessorFactory
 }
 
-func NewAnalyzeRepo() *AnalyzeRepo {
+func NewAnalyzeRepo(ec *experiments.Checker, rpf *processors.RepoProcessorFactory) *AnalyzeRepo {
 	return &AnalyzeRepo{
 		baseConsumer: baseConsumer{
 			eventName: analytics.EventRepoAnalyzed,
 		},
+		ec:  ec,
+		rpf: rpf,
 	}
 }
 
@@ -36,7 +44,7 @@ func (c AnalyzeRepo) Consume(ctx context.Context, repoName, analysisGUID, branch
 		return errors.New("repo analysis is disabled")
 	}
 
-	_ = c.wrapConsuming(ctx, func() error {
+	return c.wrapConsuming(ctx, func() error {
 		var cancel context.CancelFunc
 		// If you change timeout value don't forget to change it
 		// in golangci-api stale analyzes checker
@@ -45,12 +53,35 @@ func (c AnalyzeRepo) Consume(ctx context.Context, repoName, analysisGUID, branch
 
 		return c.analyzeRepo(ctx, repoName, analysisGUID, branch)
 	})
-
-	// Don't return error to machinery: we will retry this task ourself from golangci-api
-	return nil
 }
 
 func (c AnalyzeRepo) analyzeRepo(ctx context.Context, repoName, analysisGUID, branch string) error {
+	parts := strings.Split(repoName, "/")
+	repo := &github.Repo{
+		Owner: parts[0],
+		Name:  parts[1],
+	}
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid repo name %s", repoName)
+	}
+
+	if c.ec.IsActiveForAnalysis("use_new_repo_analysis", repo, false) {
+		repoCtx := &processors.RepoContext{
+			Ctx:          ctx,
+			AnalysisGUID: analysisGUID,
+			Branch:       branch,
+			Repo:         repo,
+		}
+		p, cleanup, err := c.rpf.BuildProcessor(repoCtx)
+		if err != nil {
+			return errors.Wrap(err, "failed to build repo processor")
+		}
+		defer cleanup()
+
+		p.Process(repoCtx)
+		return nil
+	}
+
 	p, err := processors.NewGithubGoRepo(ctx, processors.GithubGoRepoConfig{}, analysisGUID, repoName, branch)
 	if err != nil {
 		return fmt.Errorf("can't make github go repo processor: %s", err)

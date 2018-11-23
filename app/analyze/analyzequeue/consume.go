@@ -2,17 +2,32 @@ package analyzequeue
 
 import (
 	"fmt"
-	"log"
 
+	"github.com/golangci/golangci-shared/pkg/apperrors"
+	"github.com/golangci/golangci-shared/pkg/config"
+	"github.com/golangci/golangci-shared/pkg/logutil"
 	"github.com/golangci/golangci-worker/app/analyze/analyzequeue/consumers"
+	"github.com/golangci/golangci-worker/app/analyze/processors"
+	"github.com/golangci/golangci-worker/app/lib/experiments"
 	"github.com/golangci/golangci-worker/app/lib/queue"
 )
 
 func RegisterTasks() {
+	log := logutil.NewStderrLog("repo analysis")
+	log.SetLevel(logutil.LogLevelInfo)
+	cfg := config.NewEnvConfig(log)
+	et := apperrors.GetTracker(cfg, log, "worker")
+
+	trackedLog := apperrors.WrapLogWithTracker(log, nil, et)
+	ec := experiments.NewChecker(cfg, trackedLog)
+
+	rpf := processors.NewRepoProcessorFactory(&processors.StaticRepoConfig{}, trackedLog)
+	repoAnalyzer := consumers.NewAnalyzeRepo(ec, rpf)
+
 	server := queue.GetServer()
 	err := server.RegisterTasks(map[string]interface{}{
 		"analyzeV2":   consumers.NewAnalyzePR().Consume,
-		"analyzeRepo": consumers.NewAnalyzeRepo().Consume,
+		"analyzeRepo": repoAnalyzer.Consume,
 	})
 	if err != nil {
 		log.Fatalf("Can't register queue tasks: %s", err)

@@ -50,7 +50,8 @@ Configurate via `.env` file. Dev `.env` may be like this:
 REDIS_URL="redis://localhost:6379"
 API_URL="https://api.dev.golangci.com"
 WEB_ROOT="https://dev.golangci.com"
-USE_CONTAINER_EXECUTOR=1
+USE_CONTAINER_EXECUTOR_PERCENT=100
+USE_NEW_REPO_ANALYSIS_PERCENT=100
 ORCHESTRATOR_ADDR="http://127.0.0.1:8001"
 ORCHESTRATOR_TOKEN=secret_token
 ```

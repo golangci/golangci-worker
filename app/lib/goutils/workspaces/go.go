@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/golangci/golangci-api/pkg/app/ensuredeps"
+	"github.com/golangci/golangci-api/pkg/goenv/ensuredeps"
 	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/repoinfo"
 	"github.com/golangci/golangci-worker/app/lib/executors"
