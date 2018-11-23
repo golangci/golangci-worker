@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/golangci/golangci-api/pkg/goenv/ensuredeps"
-
+	goenvresult "github.com/golangci/golangci-api/pkg/goenv/result"
 	"github.com/golangci/golangci-worker/app/analytics"
 	"github.com/golangci/golangci-worker/app/analyze/linters"
 	"github.com/golangci/golangci-worker/app/analyze/linters/golinters"
@@ -25,6 +25,11 @@ import (
 	"github.com/golangci/golangci-worker/app/lib/goutils/workspaces"
 	"github.com/golangci/golangci-worker/app/lib/httputils"
 	gh "github.com/google/go-github/github"
+	"github.com/pkg/errors"
+
+	"github.com/golangci/golangci-shared/pkg/config"
+	"github.com/golangci/golangci-shared/pkg/logutil"
+	"github.com/golangci/golangci-worker/app/lib/experiments"
 )
 
 const (
@@ -49,10 +54,15 @@ type githubGoPR struct {
 	context *github.Context
 	gw      *workspaces.Go
 
+	resLog *goenvresult.Log
+
 	githubGoPRConfig
 	resultCollector
+
+	newWorkspaceInstaller workspaces.Installer
 }
 
+//nolint:gocyclo
 func newGithubGoPR(ctx context.Context, c *github.Context, cfg githubGoPRConfig, analysisGUID string) (*githubGoPR, error) {
 	if cfg.client == nil {
 		cfg.client = github.NewMyClient()
@@ -94,10 +104,21 @@ func newGithubGoPR(ctx context.Context, c *github.Context, cfg githubGoPRConfig,
 		cfg.state = prstate.NewAPIStorage(httputils.GrequestsClient{})
 	}
 
+	var wi workspaces.Installer
+
+	log := logutil.NewStderrLog("executor")
+	log.SetLevel(logutil.LogLevelInfo)
+	envCfg := config.NewEnvConfig(log)
+	ec := experiments.NewChecker(envCfg, log)
+	if ec.IsActiveForAnalysis("new_pr_prepare", &c.Repo, true) {
+		wi = workspaces.NewGo2(cfg.exec, log, cfg.repoFetcher)
+	}
+
 	return &githubGoPR{
-		context:          c,
-		githubGoPRConfig: cfg,
-		analysisGUID:     analysisGUID,
+		context:               c,
+		githubGoPRConfig:      cfg,
+		analysisGUID:          analysisGUID,
+		newWorkspaceInstaller: wi,
 	}, nil
 }
 
@@ -128,6 +149,22 @@ func (g githubGoPR) getRepo() *fetchers.Repo {
 }
 
 func (g *githubGoPR) prepareRepo(ctx context.Context) error {
+	if g.newWorkspaceInstaller != nil {
+		if g.resLog != nil {
+			for _, sg := range g.resLog.Groups {
+				for _, s := range sg.Steps {
+					if s.Error != "" {
+						text := fmt.Sprintf("%s error: %s", s.Description, s.Error)
+						text = escapeErrorText(text, g.buildSecrets())
+						g.publicWarn(sg.Name, text)
+					}
+				}
+			}
+		}
+
+		return nil
+	}
+
 	repo := g.getRepo()
 	var err error
 	g.trackTiming("Clone", func() {
@@ -203,7 +240,9 @@ func (g githubGoPR) buildSecrets() map[string]string {
 	const hidden = "{hidden}"
 	ret := map[string]string{
 		g.context.GithubAccessToken: hidden,
-		g.gw.Gopath():               "$GOPATH",
+	}
+	if g.newWorkspaceInstaller == nil {
+		ret[g.gw.Gopath()] = "$GOPATH"
 	}
 
 	for _, kv := range os.Environ() {
@@ -331,6 +370,7 @@ func (g githubGoPR) setCommitStatus(ctx context.Context, status github.Status, d
 	}
 }
 
+//nolint:gocyclo
 func (g githubGoPR) Process(ctx context.Context) error {
 	defer g.exec.Clean()
 
@@ -343,12 +383,23 @@ func (g githubGoPR) Process(ctx context.Context) error {
 		return fmt.Errorf("can't get pull request: %s", err)
 	}
 
-	g.gw = workspaces.NewGo(g.exec, g.infoFetcher)
-	if err = g.gw.Setup(ctx, g.getRepo(), "github.com", g.context.Repo.Owner, g.context.Repo.Name); err != nil {
-		return fmt.Errorf("can't setup go workspace: %s", err)
+	if g.newWorkspaceInstaller == nil {
+		g.gw = workspaces.NewGo(g.exec, g.infoFetcher)
+		if err = g.gw.Setup(ctx, g.getRepo(), "github.com", g.context.Repo.Owner, g.context.Repo.Name); err != nil {
+			return fmt.Errorf("can't setup go workspace: %s", err)
+		}
+		defer g.gw.Clean(ctx)
+		g.exec = g.gw.Executor()
+	} else {
+		startedAt := time.Now()
+		exec, resLog, err := g.newWorkspaceInstaller.Setup(ctx, g.getRepo(), "github.com", g.context.Repo.Owner, g.context.Repo.Name) //nolint:govet
+		if err != nil {
+			return errors.Wrap(err, "can't setup workspace")
+		}
+		g.exec = exec
+		g.resLog = resLog
+		g.addTimingFrom("Prepare", startedAt)
 	}
-	defer g.gw.Clean(ctx)
-	g.exec = g.gw.Executor()
 
 	patch, err := g.client.GetPullRequestPatch(ctx, g.context)
 	if err != nil {
