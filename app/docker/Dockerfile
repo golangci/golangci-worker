@@ -6,8 +6,6 @@ ENV GOBINPATH=$GOPATH/bin
 
 WORKDIR ${GOPATH}
 
-RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b $GOPATH/bin v1.12.2
-
 ENV DEP_RELEASE_TAG=v0.5.0
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
@@ -28,9 +26,11 @@ RUN git clone https://github.com/golangci/getrepoinfo.git . && \
     git checkout dba22f1e4de557d0afe6970cb31e413bbe450cbd && \
     go install ./cmd/getrepoinfo
 
+RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b $GOPATH/bin v1.12.3
+
 WORKDIR ${GOPATH}/src/github.com/golangci/golangci-api
 RUN git clone https://github.com/golangci/golangci-api.git . && \
-    git checkout fcd9f4d9ac3d069a53078a498b7e02b37962ad11 && \
+    git checkout 7d0494722429c7b8ccc01f8f7e425be0fbd15586 && \
     GO111MODULE=on go mod vendor && \
     go install ./cmd/ensuredeps && \
     go install ./cmd/buildrunner && \
