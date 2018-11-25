@@ -14,3 +14,16 @@ func withAnotherIssue() {
     panic(a)
   }
 }
+
+func testScopeLint() {
+  funcs := []func(){}
+  for _, v := range []int{1, 2} {
+    funcs = append(funcs, func() {
+      log.Print(v)
+    })
+  }
+
+  for _, f := range funcs {
+    f()
+  }
+}
