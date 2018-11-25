@@ -59,6 +59,7 @@ type githubGoPR struct {
 	resultCollector
 
 	newWorkspaceInstaller workspaces.Installer
+	ec                    *experiments.Checker
 }
 
 //nolint:gocyclo
@@ -91,8 +92,14 @@ func newGithubGoPR(ctx context.Context, c *github.Context, cfg githubGoPRConfig,
 		}
 	}
 
+	log := logutil.NewStderrLog("executor")
+	log.SetLevel(logutil.LogLevelInfo)
+	envCfg := config.NewEnvConfig(log)
+	ec := experiments.NewChecker(envCfg, log)
+
 	if cfg.reporter == nil {
-		cfg.reporter = reporters.NewGithubReviewer(c, cfg.client)
+		includeLinterName := ec.IsActiveForAnalysis("include_linter_name_in_comment", &c.Repo, true)
+		cfg.reporter = reporters.NewGithubReviewer(c, cfg.client, includeLinterName)
 	}
 
 	if cfg.runner == nil {
@@ -105,10 +112,6 @@ func newGithubGoPR(ctx context.Context, c *github.Context, cfg githubGoPRConfig,
 
 	var wi workspaces.Installer
 
-	log := logutil.NewStderrLog("executor")
-	log.SetLevel(logutil.LogLevelInfo)
-	envCfg := config.NewEnvConfig(log)
-	ec := experiments.NewChecker(envCfg, log)
 	if ec.IsActiveForAnalysis("new_pr_prepare", &c.Repo, true) {
 		wi = workspaces.NewGo2(cfg.exec, log, cfg.repoFetcher)
 	}
@@ -118,6 +121,7 @@ func newGithubGoPR(ctx context.Context, c *github.Context, cfg githubGoPRConfig,
 		githubGoPRConfig:      cfg,
 		analysisGUID:          analysisGUID,
 		newWorkspaceInstaller: wi,
+		ec:                    ec,
 	}, nil
 }
 

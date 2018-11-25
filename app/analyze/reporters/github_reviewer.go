@@ -13,10 +13,11 @@ import (
 
 type GithubReviewer struct {
 	*github.Context
-	client github.Client
+	client            github.Client
+	includeLinterName bool
 }
 
-func NewGithubReviewer(c *github.Context, client github.Client) *GithubReviewer {
+func NewGithubReviewer(c *github.Context, client github.Client, includeLinterName bool) *GithubReviewer {
 	accessToken := os.Getenv("GITHUB_REVIEWER_ACCESS_TOKEN")
 	if accessToken != "" { // review as special user
 		cCopy := *c
@@ -24,8 +25,9 @@ func NewGithubReviewer(c *github.Context, client github.Client) *GithubReviewer 
 		c = &cCopy
 	}
 	ret := &GithubReviewer{
-		Context: c,
-		client:  client,
+		Context:           c,
+		client:            client,
+		includeLinterName: includeLinterName,
 	}
 	return ret
 }
@@ -84,10 +86,15 @@ func (gr GithubReviewer) Report(ctx context.Context, ref string, issues []result
 			continue // don't be annoying: don't comment on the same line twice
 		}
 
+		text := i.Text
+		if gr.includeLinterName && i.FromLinter != "" {
+			text += fmt.Sprintf(" (from `%s`)", i.FromLinter)
+		}
+
 		comment := &gh.DraftReviewComment{
 			Path:     gh.String(i.File),
 			Position: gh.Int(i.HunkPos),
-			Body:     gh.String(i.Text),
+			Body:     gh.String(text),
 		}
 		comments = append(comments, comment)
 	}

@@ -30,7 +30,7 @@ RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.s
 
 WORKDIR ${GOPATH}/src/github.com/golangci/golangci-api
 RUN git clone https://github.com/golangci/golangci-api.git . && \
-    git checkout 3329ce5d9c091cb335ea6aa5e24874f74d076df6 && \
+    git checkout e545e490e0c7a973a2b761ea6e2d4e45a4f489b9 && \
     GO111MODULE=on go mod vendor && \
     go install ./cmd/ensuredeps && \
     go install ./cmd/buildrunner && \
