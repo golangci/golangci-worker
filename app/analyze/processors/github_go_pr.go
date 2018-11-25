@@ -25,7 +25,6 @@ import (
 	"github.com/golangci/golangci-worker/app/lib/goutils/workspaces"
 	"github.com/golangci/golangci-worker/app/lib/httputils"
 	gh "github.com/google/go-github/github"
-	"github.com/pkg/errors"
 
 	"github.com/golangci/golangci-shared/pkg/config"
 	"github.com/golangci/golangci-shared/pkg/logutil"
@@ -240,6 +239,7 @@ func (g githubGoPR) buildSecrets() map[string]string {
 	const hidden = "{hidden}"
 	ret := map[string]string{
 		g.context.GithubAccessToken: hidden,
+		g.analysisGUID:              hidden,
 	}
 	if g.newWorkspaceInstaller == nil {
 		ret[g.gw.Gopath()] = "$GOPATH"
@@ -383,9 +383,16 @@ func (g githubGoPR) Process(ctx context.Context) error {
 		return fmt.Errorf("can't get pull request: %s", err)
 	}
 
+	g.setCommitStatus(ctx, github.StatusPending, "GolangCI is reviewing your Pull Request...")
+
 	if g.newWorkspaceInstaller == nil {
 		g.gw = workspaces.NewGo(g.exec, g.infoFetcher)
 		if err = g.gw.Setup(ctx, g.getRepo(), "github.com", g.context.Repo.Owner, g.context.Repo.Name); err != nil {
+			publicError := fmt.Sprintf("failed to setup workspace: %s", err)
+			publicError = escapeErrorText(publicError, g.buildSecrets())
+			g.updateAnalysisState(ctx, nil, github.StatusError, publicError)
+			g.setCommitStatus(ctx, github.StatusError, "failed to setup")
+
 			return fmt.Errorf("can't setup go workspace: %s", err)
 		}
 		defer g.gw.Clean(ctx)
@@ -394,7 +401,12 @@ func (g githubGoPR) Process(ctx context.Context) error {
 		startedAt := time.Now()
 		exec, resLog, err := g.newWorkspaceInstaller.Setup(ctx, g.getRepo(), "github.com", g.context.Repo.Owner, g.context.Repo.Name) //nolint:govet
 		if err != nil {
-			return errors.Wrap(err, "can't setup workspace")
+			publicError := fmt.Sprintf("failed to setup workspace: %s", err)
+			publicError = escapeErrorText(publicError, g.buildSecrets())
+			g.updateAnalysisState(ctx, nil, github.StatusError, publicError)
+			g.setCommitStatus(ctx, github.StatusError, "failed to setup")
+
+			return nil
 		}
 		g.exec = exec
 		g.resLog = resLog
@@ -413,7 +425,6 @@ func (g githubGoPR) Process(ctx context.Context) error {
 		return fmt.Errorf("can't store patch: %s", err)
 	}
 
-	g.setCommitStatus(ctx, github.StatusPending, "GolangCI is reviewing your Pull Request...")
 	curState, err := g.state.GetState(ctx, g.context.Repo.Owner, g.context.Repo.Name, g.analysisGUID)
 	if err != nil {
 		analytics.Log(ctx).Warnf("Can't get current state: %s", err)
