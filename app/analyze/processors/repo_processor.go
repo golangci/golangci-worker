@@ -155,12 +155,17 @@ func (r Repo) transformError(err error) error {
 		return nil
 	}
 
-	if ierr, ok := err.(*errorutils.InternalError); ok {
+	causeErr := errors.Cause(err)
+	if causeErr == fetchers.ErrNoBranchOrRepo {
+		return causeErr
+	}
+
+	if ierr, ok := causeErr.(*errorutils.InternalError); ok {
 		if strings.Contains(ierr.PrivateDesc, noGoFilesToAnalyzeErr) {
 			return errNothingToAnalyze
 		}
 
-		return err
+		return ierr
 	}
 
 	return err
@@ -181,6 +186,10 @@ func (r Repo) errorToStatus(err error) string {
 
 	if _, ok := err.(*errorutils.InternalError); ok {
 		return string(github.StatusError)
+	}
+
+	if err == fetchers.ErrNoBranchOrRepo {
+		return statusNotFound
 	}
 
 	return string(github.StatusError)
