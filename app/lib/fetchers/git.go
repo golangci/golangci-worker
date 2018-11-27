@@ -37,7 +37,7 @@ func (gf Git) Fetch(ctx context.Context, repo *Repo, exec executors.Executor) er
 		return nil
 	}
 	if out, err := exec.Run(ctx, "git", "submodule", "update", "--init", "--recursive"); err != nil {
-		analytics.Log(ctx).Warnf("Failed to init git submodule: %s, %s", err, out)
+		analytics.Log(ctx).Warnf("Failed to update git submodule: %s, %s", err, out)
 		return nil
 	}
 
